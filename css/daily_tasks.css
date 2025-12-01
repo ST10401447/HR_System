@@ -1,0 +1,70 @@
+/* General Styles */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.main-content h1 {
+    margin: 0 0 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Tasks Table */
+.dailyTasks_tasksTable {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.dailyTasks_tasksHeader, .dailyTasks_taskRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.dailyTasks_tasksHeader span {
+    font-weight: bold;
+    color: #333;
+}
+
+.dailyTasks_taskRow span {
+    color: #666;
+}
+
+.dailyTasks_tasksHeader {
+    border-bottom: 2px solid #ff9900;
+}
+
+.dailyTasks_taskRow:last-child {
+    border-bottom: none;
+}
+
+/* Announcement */
+.announcement {
+    text-align: center;
+    margin: 20px 0;
+    font-size: 16px;
+    color: #666;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}

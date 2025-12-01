@@ -1,0 +1,311 @@
+/* General reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+
+
+/* Apply background styling to the body */
+body {
+    margin: 0;
+    padding: 0;
+    /* background-image: url('TTG-Background.png'); */
+    background-size: cover;
+    background-repeat: no-repeat; 
+    background-position: center center; /* Ensure the background is centered */
+    height: 100vh; 
+    overflow: auto; /* Allow scrolling */
+    
+}
+
+
+.task-table h2 {
+    margin-top: 10px; /* Adjust this value to push the element down */
+    margin-bottom: 10px; /* Optional: Adjust spacing below the h2 */
+    font-size: 24px; /* Optional: Adjust font size for better spacing */
+    text-align: left; /* Optional: Center the heading */
+}
+
+.task-table {
+    padding-top: 10px; /* Adds space above the entire section */
+    padding-bottom: 20px; /* Optional: Adds space below the section */
+}
+
+
+
+/* For mobile devices */
+@media (max-width: 768px) {
+    body {
+        background-image: url('TTG-Background.png'); /* Ensure the path is correct */
+        /* background-size: cover; Scale the image to cover the entire viewport */
+        background-repeat: no-repeat; /* Prevent tiling */
+        background-position: center; /* Center the image */
+        background-attachment: scroll; /* Mobile-friendly scrolling */
+        
+    }
+
+    .main-content {
+        margin-top: 10px; /* Pushes content down to make the background more visible */
+        
+    }
+}
+
+
+
+/* Main content styling */
+.main-content {
+    flex: 1;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* Push content to the top */
+    background-color: #f4f4f4; /* Maintain background styling */
+    overflow-y: auto; /* Allow scrolling if content overflows */
+}
+
+
+.main-content img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    margin-top: 20px; 
+}
+
+
+/* Adjusting sidebar on mobile */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0; /* Full width for mobile */
+        padding: 20px;
+    }
+}
+
+
+/* Dashboard styling */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    
+}
+
+
+
+/* Main content styling */
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+
+/* General reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+
+/* Main content area */
+.main-content {
+    padding: 30px;
+    background-color: rgba(244, 244, 244, 0.9); /* Light transparent background */
+    border-radius: 10px;
+    /* margin-top: 1rem; */
+    background-image: url('TTG-Background.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover; /* Ensures the image covers the entire area */
+    background-size: contain; /* Ensures the entire image is visible without cropping */
+}
+
+
+/* Tabular Section */
+.tabular--wrapper {
+    background: #e4e3e3;
+    margin-top: 1rem;
+    border-radius: 10px;
+    padding: 2rem;
+    background-image: url('background-image.png'); /* Add your background image */
+    background-repeat: no-repeat;
+    background-size: cover; /* Ensures the image covers the entire container */
+    background-position: center;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto; /* Allows horizontal scrolling for small screens */
+}
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-size: 16px;
+    background-color: #ff9500;
+    color: white;
+}
+
+tbody {
+    background: #f2f2f2;
+}
+
+td {
+    padding: 15px;
+    font-size: 14px;
+    color: #333;
+}
+
+tr:nth-child(even) {
+    background: #fff;
+}
+
+tfoot {
+    background: rgba(133, 99, 186, 255);
+    font-weight: bold;
+    color: #fff;
+}
+
+tfoot td {
+    padding: 15px;
+}
+
+
+/* Button styles */
+.btn {
+    display: inline-block;
+    padding: 8px 20px;
+    text-align: center;
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px 0;
+}
+
+.btn-edit {
+    background-color: orange;
+}
+
+.btn-delete {
+    background-color: red;
+}
+
+.btn-approve {
+    background-color: green;
+}
+
+.btn-edit:hover {
+    background-color: darkorange;
+}
+
+.btn-delete:hover {
+    background-color: darkred;
+}
+
+.create-task-btn {
+    background-color: #ff9500;
+    color: white;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    margin-top: 20px;
+}
+
+.create-task-btn:hover {
+    background-color: darkorange;
+}
+
+/* Center flex for buttons */
+.center-flex {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Status colors */
+.status.completed {
+    color: green;
+}
+
+.status.pending {
+    color: orange;
+}
+
+.status.incomplete {
+    color: red;
+}
+
+
+
+/* Responsive Media Query */
+@media (max-width: 768px) {
+    .task-table h2 {
+        margin-top: 20px; /* Pushes the h2 down */
+        margin-bottom: 10px; /* Optional: Adds space below the h2 */
+        font-size: 20px; /* Adjust font size for smaller screens */
+        text-align: center; /* Optional: Center the heading */
+    }
+
+    .task-table {
+        padding-top: 5px; /* Adds space above the entire section */
+        padding-bottom: 50px; /* Optional: Adds space below the section */
+    }
+
+    .tabular--wrapper {
+        padding-top: 3rem; /* Moves content down */
+        padding-bottom: 1rem; /* Adjust bottom padding */
+    }
+
+    .table-container {
+        overflow-x: auto; /* Ensures horizontal scrolling */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling for mobile devices */
+        
+    }
+
+    table {
+        width: 100%; /* Ensures table adjusts to container width */
+        border-collapse: collapse; /* Optional: Removes space between borders */
+    }
+
+    th, td {
+        font-size: 12px; /* Adjust font size for mobile */
+        padding: 10px; /* Reduce padding for smaller screens */
+        text-align: left; /* Align text to the left */
+    }
+
+    .create-task-btn {
+        width: 100%;
+        padding: 10px 20px;
+    }
+
+    .btn {
+        font-size: 12px;
+        padding: 6px 15px;
+    }
+
+    .main-content {
+        padding: 54px;
+        justify-content: flex-start;
+    }    
+
+    .main-content {
+        margin-left: 0;
+    }    
+}

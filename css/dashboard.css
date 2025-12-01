@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Apply background styling to the body */
+body {
+    margin: 0;
+    padding: 0;
+    background-image: url('TTG-Background.png');
+    background-size: cover;
+    background-repeat: no-repeat; 
+    height: 100vh; 
+    overflow: hidden; /* scrolling when more info is added */
+}
+
+
+
+/* For mobile devices */
+@media (max-width: 768px) {
+   
+
+    body {
+        padding-top: 0px;
+        background-size: cove; /* Makes sure the background scales properly */
+        background-attachment: scroll;
+    }
+}
+
+
+/* Adjust the .main-content for correct display
+.main-content {
+    position: relative;
+    padding-top: 0px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    z-index: 1;
+} */
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f4f4f4; /* Maintain background styling */
+    overflow-y: auto; /* Allow scrolling if content overflows */
+}
+
+
+
+
+/* Add more specific styling for images */
+.main-content img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    margin-top: 20px; 
+}
+
+
+
+
+/* ------------------------------------------------------------------------------ */
+
+/* Dashboard */
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+    padding-top: 40px;
+}
+
+.announcement {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+}
+
+/* ------------------------------------------------------------------------------ */
+
+
+
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+
+/* Dashboard container styling */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+
+/* )))))))))))))))))))))))))))))))))))))) */
+
+
+
+/* Main content styling */
+.main-content {
+    flex-grow: 1;
+    background-color: #f4f4f4;
+    overflow-y: auto;
+}
+
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+
+    .main-content {
+        padding: 40px;
+        justify-content: flex-start; /* Ensure top alignment on mobile */
+    }
+
+    .main-content {
+        margin-left: 0; /* Taking up full width on mobile devices */
+    }   
+}
+
+
+
+
+
+/* ______________________________________________________________________________ */
+

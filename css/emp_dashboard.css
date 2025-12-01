@@ -1,0 +1,116 @@
+.glass-card {
+    background-color: hsla(0, 0%, 100%, 0.1);
+    border: 2px solid hsla(0, 0%, 100%, 0.2);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 20px;
+    margin: 10px;
+}
+
+/* Main content area */
+.main-content {
+    background-color: rgba(244, 244, 244, 0.9); /* Light transparent background */
+    border-radius: 10px;
+    /* margin-top: 1rem; */
+    background-image: url('../resources/TTG-Background.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover; /* Ensures the image covers the entire area */
+    background-size: contain; /* Ensures the entire image is visible without cropping */
+    justify-content: start;
+}
+
+.card-container {
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+
+    .left {
+        width: 400px;
+        
+        .card {
+            height: 600px;
+        }
+        
+        .container .item {
+            display: flex;
+            align-items: start;
+            margin-bottom: 15px;
+            gap: 20px; 
+
+            p.date {
+                width: 180px;
+            }
+
+            p.description {
+                width: 600px;
+                color: hsla(0%, 0%, 50%, 1);
+            }
+        }
+
+        h2 {
+            text-align: center;
+        }
+    }
+
+    .right {
+        width: 800px;
+
+        .headings {
+            display: flex;
+            justify-content: center;
+            gap: 80px;
+            margin-bottom: 10px;
+        }
+
+        .top {
+            height: 300px;
+        }
+    }
+}
+
+th {
+    text-align: left;
+}
+
+.underline {
+    width: 70%;
+    height: 2px;
+    background-color: #ff9500;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.announcements {
+    position: relative;
+    
+    .line {
+        position: absolute;
+        height: 80%;
+        width: 2px;
+        background-color: black;
+        left: 80px;
+        bottom: 0px;
+    }
+}
+
+td, th {
+    padding: 15px 30px 15px 15px;
+}
+
+thead {
+    border-bottom: black 2px solid;
+}
+
+.part {
+    display: flex;
+    justify-content: center;
+}

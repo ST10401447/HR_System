@@ -1,0 +1,190 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('../resources/TTG-Background.png'); 
+        background-size: cover; /* Change 'contain' to 'cover' */
+        background-repeat: no-repeat; /* Prevent image repetition */
+        background-position: center; /* Center the image */
+        background-attachment: fixed;
+        color: #333; 
+        height: 100vh;   
+}
+
+body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0); /* No transparency on the overlay */
+    z-index: -1; /* Place behind the content */
+}
+
+
+/* Dashboard Container */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: rgba(255, 255, 255, 0.1); /* Slight white tint with transparency */
+    backdrop-filter: blur(0px);
+}
+
+/* Main Content */
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Update Details Section */
+.update-details {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.update-details h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+
+/* Form */
+.update-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.form-group input, .form-group select {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+.form-group input:focus {
+    border-color: #ff9500;
+    outline: none;
+}
+
+/* Save Button */
+.save-button {
+    grid-column: span 2;
+    padding: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #fff;
+    background-color: #ff9500;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.save-button:hover {
+    background-color: #ff7a00;
+}
+
+/* Success Message */
+.success-message {
+    text-align: center;
+    color: #28a745;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+
+
+
+
+
+/* Mobile-Friendly Styles */
+@media (max-width: 768px) {
+    body {
+        background-size: 100%; /* Decrease the size to 80% */
+        background-position: center; /* Keep it centered */
+    }
+
+    .dashboard-container {
+        flex-direction: column;
+        width: 100%;
+        max-width: none;
+      }
+    
+    
+      .main-content {
+        padding: 10px;
+      }
+    
+      .vertical-form {
+        width: 90%;
+      }
+
+    .update-details {
+        padding: 20px;
+    }
+
+    
+    .update-form {                      /* Adjust form layout */
+        grid-template-columns: 1fr;     /* Stack the form fields */
+    }
+
+    .form-group input, .form-group select {
+        padding: 12px;
+        font-size: 1.1em;
+    }
+
+    .save-button {
+        font-size: 1.2em;
+        padding: 15px;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .update-form {
+        grid-template-columns: 1fr;             /* Single-column layout for mobile */
+        gap: 10px;                              /*Adjust spacing between fields */
+    }
+
+    .save-button {
+        grid-column: span 1;                    /* Ensure button spans only one column */
+    }
+}
+
+/* Desktop View */
+@media (min-width: 769px) {
+    body {
+        background-size: 60%; /* Scale the image to 60% of the container */
+        background-position: calc(75% + 20px) center; /* Adjust horizontal position */
+    }
+}

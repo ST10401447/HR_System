@@ -1,0 +1,80 @@
+
+
+.dashBunderline {
+    height: 3px;
+    background: #FF9500;
+    width: 33.33%;
+    transition: all 0.3s ease;
+}
+
+.dashBbuttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+.dashBtab-button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.3s ease;
+}
+
+.dashBtab-button.active {
+    color: #FF9500;
+    font-weight: bold;
+}
+
+.dashBtab-content {
+    display: none;
+}
+
+.dashBtab-content.active {
+    display: inline-block;
+    padding: 20px;
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    
+}
+
+table th, table td {
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+table th {
+    
+    color: black;
+    font-weight: bold;
+    border-bottom: 2px solid grey;
+    border-radius: 50px;
+    border-bottom-left-radius: 50px;
+    border-bottom-right-radius: 50px;
+}
+
+table tr:hover td {
+    background-color: #f1f1f1b0;
+}
+
+/* View Button Styling */
+.view-button {
+    padding: 5px 10px;
+    background-color: #ff9500c4;
+    color: black;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 70px;
+}
+
+.view-button:hover {    
+    background-color: #FF9500;
+}
