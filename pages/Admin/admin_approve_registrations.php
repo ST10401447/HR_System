@@ -173,7 +173,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
     <div class="header">
-        <button class="back-btn" onclick="safeGoBack();">← Back</button>
+        <button class="back-btn" onclick="location.href='manage_employees.php';">← Back</button>
         <h1>Pending Registration Requests</h1>
     </div>
     
@@ -213,25 +213,4 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php endforeach; ?>
     <?php endif; ?>
 </body>
-
-<script>
-function safeGoBack() {
-    // Try to fetch manage_employees.php to check if accessible
-    fetch('manage_employees.php', { method: 'HEAD', credentials: 'same-origin' })
-    .then(function(response) {
-        if (response.ok) {
-            // Access allowed, navigate to manage_employees
-            location.href = 'manage_employees.php';
-        } else {
-            // Access denied, fall back to previous page
-            history.back();
-        }
-    })
-    .catch(function() {
-        // Network error, fall back to previous page
-        history.back();
-    });
-}
-</script>
-
 </html>
