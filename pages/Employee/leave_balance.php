@@ -328,6 +328,94 @@ html, body {
     </aside>
 
    <!-- Main Content -->
+    <body>
+
+  <!-- HAMBURGER & OVERLAY -->
+  <div class="hamburger" id="hamburger"><i class="fas fa-bars"></i></div>
+  <div class="overlay" id="overlay"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+      <div class="profile-section">
+          <div class="profile-image">
+              <img src="<?php echo htmlspecialchars($profile_picture ?? '../../resources/default-avatar.png'); ?>" 
+                   id="profilePic" alt="Profile">
+          </div>
+          <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+          <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
+              Change Picture
+          </button>
+          <input type="file" id="imageUpload" hidden accept="image/*" onchange="updateProfilePic()">
+      </div>
+
+      <nav class="nav-links">
+          <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+          <a href="update_details.php"><i class="fas fa-user"></i><span>Update Details</span></a>
+          <a href="daily_tasks.php"><i class="fas fa-tasks"></i><span>Daily Tasks</span></a>
+          <a href="timeOff.php"><i class="fas fa-calendar-alt"></i><span>Time Off</span></a>
+          <a href="leave_balance.php" class="active"><i class="fas fa-calculator"></i><span>Leave Balance</span></a>
+          <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
+          <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
+      </nav>
+  </aside>
+
+  <!-- MAIN CONTENT – THIS IS THE ONLY THING YOU NEED -->
+  <div class="main-content">
+      <h1 style="text-align:center; margin-bottom:40px; color:#333;">
+          Leave Balance
+      </h1>
+
+      <div class="table-container">
+          <table>
+              <thead>
+                  <tr>
+                      <th>Leave Type</th>
+                      <th>Used Days</th>
+                      <th>Remaining Days</th>
+                      <th>Total Allowance</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <?php foreach ($leave_types as $leave_name => $leave_info): 
+                      $used_days = $approved_leave_data[$leave_info['key']] ?? 0;
+                      $remaining_days = $leave_info['allowance'] - $used_days;
+                  ?>
+                  <tr>
+                      <td><?php echo htmlspecialchars($leave_name); ?></td>
+                      <td><?php echo $used_days; ?></td>
+                      <td><?php echo $remaining_days; ?></td>
+                      <td><?php echo $leave_info['allowance']; ?></td>
+                  </tr>
+                  <?php endforeach; ?>
+              </tbody>
+          </table>
+      </div>
+  </div>
+
+  <!-- JavaScript for hamburger menu -->
+  <script>
+      document.getElementById('hamburger').addEventListener('click', function() {
+          document.getElementById('sidebar').classList.toggle('active');
+          document.getElementById('overlay').classList.toggle('active');
+      });
+
+      document.getElementById('overlay').addEventListener('click', function() {
+          document.getElementById('sidebar').classList.remove('active');
+          this.classList.remove('active');
+      });
+
+      function updateProfilePic() {
+          const file = document.getElementById('imageUpload').files[0];
+          if (file) {
+              const reader = new FileReader();
+              reader.onload = e => document.getElementById('profilePic').src = e.target.result;
+              reader.readAsDataURL(file);
+          }
+      }
+  </script>
+
+</body>
+</html>
    <div class="content">
         <style>
             .content {
@@ -392,30 +480,8 @@ html, body {
             }
         </style>
 
-        <h1 style="text-align: center;">Leave Balance</h1>
+   
 
-        <div class="table-container">
-            <table>
-                <tr>
-                    <th>Leave Type</th>
-                    <th>Used Days</th>
-                    <th>Remaining Days</th>
-                    <th>Total Allowance</th>
-                </tr>
-                <?php foreach ($leave_types as $leave_name => $leave_info):
-                    $used_days = $approved_leave_data[$leave_info['key']] ?? 0;
-                    $remaining_days = $leave_info['allowance'] - $used_days;
-                ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($leave_name); ?></td>
-                    <td><?php echo htmlspecialchars($used_days); ?></td>
-                    <td><?php echo htmlspecialchars($remaining_days); ?></td>
-                    <td><?php echo htmlspecialchars($leave_info['allowance']); ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
-    </div>
 
     <script>
         function updateProfilePic() {
