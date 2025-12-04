@@ -1,41 +1,111 @@
 <?php
 $servername = "localhost";
-$username = "root"; // Default for WampServer/XAMPP
+$username = "root";
 $password = "";
-$db1 = "users1";  // Assuming the announcements table should be in this database
+$db1 = "users1"; 
 
 try {
-    // Connect to MySQL server
+    // Connect to MySQL
     $conn = new PDO("mysql:host=$servername", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Check if database 1 exists
+    // Check if database exists
     $stmt = $conn->query("SHOW DATABASES LIKE '$db1'");
-    $db1Exists = $stmt->rowCount() > 0;    
-
-    // Create databases only if they don't exist
-    if (!$db1Exists) {
+    if ($stmt->rowCount() == 0) {
         $conn->exec("CREATE DATABASE $db1");
     }
 
-    // Function to check if a table exists in a database
+    // Helper to check table existence
     function tableExists($conn, $dbName, $tableName) {
-        $stmt = $conn->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$dbName' AND table_name = '$tableName'");
+        $stmt = $conn->query("
+            SELECT COUNT(*) 
+            FROM information_schema.tables 
+            WHERE table_schema = '$dbName' 
+            AND table_name = '$tableName'
+        ");
         return $stmt->fetchColumn() > 0;
     }
 
-    // Function to create a table if it doesn't exist
+    // Helper to create table if missing
     function createTable($conn, $dbName, $tableName, $columns) {
         if (!tableExists($conn, $dbName, $tableName)) {
             $conn->exec("USE $dbName");
             $sql = "CREATE TABLE $tableName ($columns)";
-            $conn->exec($sql);            
+            $conn->exec($sql);
         }
     }
 
-    // Define table structures (Including calendar table)
+    // ---------------------
+    // TABLE DEFINITIONS
+    // ---------------------
     $tables = [
-        $db1 => [                       
+        $db1 => [
+
+            // USERS (MODERNISED)
+            "users" => "
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255),
+                email VARCHAR(255) UNIQUE,
+                employee_id INT,
+                password VARCHAR(255),
+                department VARCHAR(255),
+                role VARCHAR(255),
+                profile_picture VARCHAR(255),
+                company_id VARCHAR(255),
+
+                -- Modern profile fields
+                title VARCHAR(255),
+                dob DATE,
+                nationality VARCHAR(255),
+                gender VARCHAR(255),
+                race VARCHAR(255),
+                mobile VARCHAR(20),
+                address TEXT,
+                city VARCHAR(255),
+                country VARCHAR(255),
+                bio TEXT,
+                theme VARCHAR(20) DEFAULT 'light',
+                profile_status VARCHAR(50) DEFAULT 'incomplete',
+
+                -- Employment
+                start_date DATE,
+
+                -- Emergency
+                emergency_name VARCHAR(255),
+                emergency_number VARCHAR(20),
+
+                -- Secure Login Fields
+                last_login TIMESTAMP NULL,
+                login_attempts INT DEFAULT 0,
+                locked_until TIMESTAMP NULL,
+                account_status ENUM('active','locked','disabled') DEFAULT 'active',
+                password_reset_token VARCHAR(255) NULL,
+                password_reset_expires TIMESTAMP NULL,
+
+                INDEX(email),
+                INDEX(employee_id)
+            ",
+
+            // PENDING REGISTRATION (MODERNISED)
+            "pending_registrations" => "
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255),
+                email VARCHAR(255),
+                phone VARCHAR(20),
+                password VARCHAR(255),
+                department VARCHAR(255),
+                company_id VARCHAR(255),
+                request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status ENUM('pending','approved','rejected') DEFAULT 'pending',
+                admin_notes TEXT,
+
+                -- Verification
+                verification_code VARCHAR(10),
+                verified TINYINT(1) DEFAULT 0,
+                verification_expires TIMESTAMP NULL
+            ",
+
+            // TIME OFF
             "timeoff" => "
                 timeoff_id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
@@ -45,6 +115,8 @@ try {
                 status VARCHAR(255),
                 reason VARCHAR(255)
             ",
+
+            // LEAVE BALANCE
             "leave_balance" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
@@ -55,25 +127,8 @@ try {
                 unpaid INT,
                 compassionate INT
             ",
-            "users" => "
-                name VARCHAR(255),
-                email VARCHAR(255),
-                employee_id INT,
-                password VARCHAR(255),
-                department VARCHAR(255),
-                role VARCHAR(255),
-                profile_picture VARCHAR(255),
-                company_id VARCHAR(255),
-                title VARCHAR(255),
-                dob DATE,
-                nationality VARCHAR(255),
-                gender VARCHAR(255),
-                race VARCHAR(255),
-                start_date DATE,
-                mobile VARCHAR(20),
-                emergency_name VARCHAR(255),
-                emergency_number VARCHAR(20)                
-            ",
+
+            // TASKS
             "tasks" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 task_name VARCHAR(255),
@@ -83,13 +138,17 @@ try {
                 manager VARCHAR(255),
                 status VARCHAR(255)
             ",
+
+            // ANNOUNCEMENTS
             "announcements" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 date DATE NOT NULL,
                 text VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                description VARCHAR(255) NOT NULL
+                description VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ",
+
+            // DOCUMENTS
             "documents" => "
                 document_id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
@@ -97,12 +156,23 @@ try {
                 document_original_name VARCHAR(255),
                 document_type VARCHAR(100)
             ",
+
+            // EVENTS / CALENDAR
             "events" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 title VARCHAR(255),
                 start DATE,
                 end DATE
             ",
+
+            "calendar" => "
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255),
+                start DATE,
+                end DATE
+            ",
+
+            // FEEDBACK
             "feedback" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
@@ -110,6 +180,8 @@ try {
                 feedback_text TEXT,
                 submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ",
+
+            // LEAVE REQUESTS
             "leave_requests" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
@@ -118,34 +190,18 @@ try {
                 status VARCHAR(255),
                 request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ",
-            "calendar" => "
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255),
-                start DATE,
-                end DATE
-            ",
+
+            // VOTES
             "votes" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT,
                 vote_id INT,
                 vote_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ",
-            "pending_registrations" => "
-             id INT AUTO_INCREMENT PRIMARY KEY,
-             name VARCHAR(255),
-             email VARCHAR(255),
-             password VARCHAR(255),
-             department VARCHAR(255),
-             company_id VARCHAR(255),
-             request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-             status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-             admin_notes TEXT
-       "
-
+            "
         ]
     ];
 
-    // Create tables if they don't exist
+    // CREATE TABLES
     foreach ($tables as $database => $tableData) {
         $conn->exec("USE $database");
         foreach ($tableData as $table => $columns) {
@@ -153,56 +209,13 @@ try {
         }
     }
 
-    // Switch to the users1 database for data insertion
+    // ----------------------------
+    // INSERT DEFAULT ADMIN USERS
+    // ----------------------------
+
     $conn->exec("USE $db1");
 
-    // Insert data into announcements table if not exists
-    if (!tableExists($conn, $db1, 'announcements')) {
-        $sql = "INSERT INTO announcements (date, text, created_at, description) 
-                VALUES (:date, :text, :created_at, :description)";
-        $stmt = $conn->prepare($sql);
-        
-        $announcements = [
-            [
-                'date' => '2025-03-31',
-                'text' => 'month end award ceremony',
-                'created_at' => '2025-03-22 10:03:42',
-                'description' => 'Award ceremony'
-            ],
-            [
-                'date' => '2025-03-31',
-                'text' => 'Submission',
-                'created_at' => '2025-03-22 10:15:42',
-                'description' => 'Monthly Reports'
-            ],
-            [
-                'date' => '2025-03-31',
-                'text' => 'month end',
-                'created_at' => '2025-03-23 22:22:32',
-                'description' => 'Month End Celebration'
-            ]
-        ];
-        
-        foreach ($announcements as $announcement) {
-            $stmt->execute($announcement);
-        }
-    }
-
-    // Insert data into documents table if not exists
-    if (!tableExists($conn, $db1, 'documents')) {
-        $sql = "INSERT INTO documents (employee_id, document_name, document_original_name, document_type) 
-                VALUES (:employee_id, :document_name, :document_original_name, :document_type)";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([
-            'employee_id' => '1112',
-            'document_name' => '1112_cv.docx',
-            'document_original_name' => 'Email_Signatures[1].docx',
-            'document_type' => 'CV'
-        ]);
-    }
-
-    // Insert default users if they don't exist
-    $users = [
+    $defaultUsers = [
         [
             'name' => 'Prince',
             'email' => 'prince@thetechgiants.co.za',
@@ -211,57 +224,39 @@ try {
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-AD-2025',
-            'title' => '',
-            'dob' => null,
-            'nationality' => '',
-            'gender' => '',
-            'race' => '',
-            'start_date' => null,
-            'mobile' => '',
-            'emergency_name' => '',
-            'emergency_number' => ''   
+            'company_id' => 'TTG-AD-2025'
         ],
         [
             'name' => 'Samson',
-            'email' => 'Samson@thetechgiants.co.za',
+            'email' => 'samson@thetechgiants.co.za',
             'employee_id' => '1112',
             'password' => password_hash('1010', PASSWORD_BCRYPT),
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025',
-            'title' => '',
-            'dob' => null,
-            'nationality' => '',
-            'gender' => '',
-            'race' => '',
-            'start_date' => null,
-            'mobile' => '',
-            'emergency_name' => '',
-            'emergency_number' => ''   
+            'company_id' => 'TTG-IT-2025'
         ]
     ];
 
-    foreach ($users as $user) {
+    foreach ($defaultUsers as $user) {
         $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE employee_id = :employee_id");
         $stmt->execute(['employee_id' => $user['employee_id']]);
-        $exists = $stmt->fetchColumn();
 
-        if (!$exists) {
-            $sql = "INSERT INTO users (name, email, employee_id, password, department, role, profile_picture, company_id, title, dob, nationality, gender, race, start_date, mobile, emergency_name, emergency_number) 
-                    VALUES (:name, :email, :employee_id, :password, :department, :role, :profile_picture, :company_id, :title, :dob, :nationality, :gender, :race, :start_date, :mobile, :emergency_name, :emergency_number)";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute($user);
+        if ($stmt->fetchColumn() == 0) {
+            $sql = "
+                INSERT INTO users 
+                (name, email, employee_id, password, department, role, profile_picture, company_id)
+                VALUES 
+                (:name, :email, :employee_id, :password, :department, :role, :profile_picture, :company_id)
+            ";
+            $stmtInsert = $conn->prepare($sql);
+            $stmtInsert->execute($user);
         }
     }
 
-    echo "Database setup completed successfully!";
+    echo "✅ Database setup updated successfully!";
 
 } catch (PDOException $e) {
-    echo "Error: " . $e->getMessage();
+    echo "❌ Error: " . $e->getMessage();
 }
-
-// Close connection
-$conn = null;
 ?>
