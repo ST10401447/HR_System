@@ -327,6 +327,7 @@ html, body {
             <a href="timeOff.php"><i class="fas fa-calendar-alt"></i><span>Time Off</span></a>
             <a href="leave_balance.php"><i class="fas fa-calculator"></i><span>Leave Balance</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
+            <a href="../Admin/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Admin</span></a>
             <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
         </nav>
     </aside>
