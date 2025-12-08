@@ -273,6 +273,8 @@ window.addEventListener('resize', setupMobileTables);
 html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
+    overflow-x: hidden;
    
 }
 
@@ -581,6 +583,8 @@ try {
                         text-align: center;
                         font-size: 15px;
                         font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
+                        overflow-y: auto;
+                        min-height: 100vh;
                     }
 
                     #calendar {
