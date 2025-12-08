@@ -137,7 +137,7 @@ try {
             padding: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start; /* keep content at top so form/button aren't pushed down */
             align-items: center;
         }
         h2 {
@@ -150,15 +150,16 @@ try {
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 900px;
-            height: 50vh;
+            height: auto; /* allow form to size to its contents */
         }
         textarea {
             width: 100%;
-            margin-bottom: 140px;
+            margin-bottom: 20px; /* reduce large bottom gap so submit button is visible */
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            resize: none;
+            resize: vertical; /* allow vertical resizing if user needs more space */
+            min-height: 160px;
         }
         select {
             width: 100%;
