@@ -235,6 +235,26 @@ try {
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
             'company_id' => 'TTG-IT-2025'
+        ],
+         [
+            'name' => 'HR Manager',
+            'email' => 'HR@thetechgiants.co.za',
+            'employee_id' => '1113',
+            'password' => password_hash('1012', PASSWORD_BCRYPT),
+            'department' => 'HR Team',
+            'role' => 'HR',
+            'profile_picture' => '../../resources/UserIcon.jpg',
+            'company_id' => 'TTG-IT-2025'
+         ],
+         [
+            'name' => 'Management Team',
+            'email' => 'management@thetechgiants.co.za',
+            'employee_id' => '1114',
+            'password' => password_hash('1013', PASSWORD_BCRYPT),
+            'department' => 'Management',
+            'role' => 'Manager',
+            'profile_picture' => '../../resources/UserIcon.jpg',
+            'company_id' => 'TTG-IT-2025'
         ]
     ];
 
