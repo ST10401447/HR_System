@@ -80,6 +80,21 @@ if (isset($_POST['upload_document'])) {
     $result = $conn->query("SELECT * FROM users WHERE employee_id=$employee_id");
     $employee_pre = $result->fetch_all(MYSQLI_ASSOC);
     $employee = $employee_pre[0];
+
+    $docs = [];
+$doc_query = $conn->prepare("
+    SELECT doc_type, filename, upload_date 
+    FROM employee_documents 
+    WHERE employee_id = ?
+");
+$doc_query->bind_param("i", $employee_id);
+$doc_query->execute();
+$result_docs = $doc_query->get_result();
+
+while ($row = $result_docs->fetch_assoc()) {
+    $docs[$row['doc_type']] = $row;
+}
+
 ?>
 
 
@@ -324,7 +339,40 @@ html, body {
     }
 }
 
+.uploaded-documents {
+    margin-top: 25px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
 
+.doc-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.doc-item:last-child {
+    border-bottom: none;
+}
+
+.doc-link {
+    color: #0077cc;
+    margin-left: 10px;
+}
+
+.missing-doc {
+    color: red;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.upload-date {
+    margin-left: 10px;
+    color: #777;
+    font-size: 0.9em;
+}
+    
 
 </style>
 
@@ -499,9 +547,32 @@ html, body {
                     <p class="success-message"><?php echo $message; ?></p>
                 <?php endif; ?>
             </div>
+             <h3>Uploaded Documents</h3>
+
+<div class="uploaded-documents">
+    <?php foreach ($document_types as $key => $label): ?>
+        <div class="doc-item">
+            <strong><?= $label ?>:</strong>
+
+            <?php if (isset($docs[$key])): ?>
+                <a href="../../uploads/documents/<?= $docs[$key]['filename'] ?>" 
+                   target="_blank" class="doc-link">
+                   View / Download
+                </a>
+                <span class="upload-date">
+                    (Uploaded: <?= date('Y-m-d', strtotime($docs[$key]['upload_date'])) ?>)
+                </span>
+            <?php else: ?>
+                <span class="missing-doc">Not Uploaded</span>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+</div>
+
         </div>
     </div>
 
+   
     <script src="../../js/script.js"></script>
 
 </body>
