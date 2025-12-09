@@ -197,7 +197,18 @@ try {
                 employee_id INT,
                 vote_id INT,
                 vote_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            "
+            ",
+
+            //Employee Docs
+            "employee_documents" => "
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    doc_type VARCHAR(50) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_emp_doc (employee_id, doc_type)
+",
+
         ]
     ];
 

@@ -96,6 +96,21 @@ if (isset($_POST['upload_document'])) {
     $result = $conn->query("SELECT * FROM users WHERE employee_id=$employee_id");
     $employee_pre = $result->fetch_all(MYSQLI_ASSOC);
     $employee = $employee_pre[0];
+
+    $docs = [];
+$doc_query = $conn->prepare("
+    SELECT doc_type, filename, upload_date 
+    FROM employee_documents 
+    WHERE employee_id = ?
+");
+$doc_query->bind_param("i", $employee_id);
+$doc_query->execute();
+$result_docs = $doc_query->get_result();
+
+while ($row = $result_docs->fetch_assoc()) {
+    $docs[$row['doc_type']] = $row;
+}
+
 ?>
 
 
@@ -416,7 +431,40 @@ html, body {
 }
 
 
+.uploaded-documents {
+    margin-top: 25px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
 
+.doc-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.doc-item:last-child {
+    border-bottom: none;
+}
+
+.doc-link {
+    color: #0077cc;
+    margin-left: 10px;
+}
+
+.missing-doc {
+    color: red;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.upload-date {
+    margin-left: 10px;
+    color: #777;
+    font-size: 0.9em;
+}
+    
 
 </style>
 
@@ -645,13 +693,7 @@ html, body {
 
             </div>
         </div>
-
-        <?php endwhile; else: ?>
-            <p class="text-muted ms-3">No documents uploaded yet.</p>
-        <?php endif; ?>
-
     </div>
-</div>
 
     <script src="../../js/script.js"></script>
 

@@ -442,9 +442,9 @@ html, body {
 
         <nav class="nav-links">
             <a href="dashboard.php" class="active"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
+            <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span> Employee Tasks</span></a>
             <a href="manage_leaves.php"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
-            <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>View Employee Profiles</span></a>
+            <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span> Employee Profiles</span></a>
             <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
             <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
