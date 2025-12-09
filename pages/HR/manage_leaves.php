@@ -22,9 +22,40 @@
 
     // Handle approve
     if (isset($_POST['approve_id'])) {
-        $timeoff_id = $_POST['approve_id'];
-        $conn->query("UPDATE timeoff SET status='Approved' WHERE timeoff_id=$timeoff_id");
-    }
+    $timeoff_id = $_POST['approve_id'];
+
+    // 1. Get full leave info
+    $sql = "SELECT * FROM timeoff WHERE timeoff_id = $timeoff_id";
+    $result = $conn->query($sql);
+    $leave = $result->fetch_assoc();
+
+    $employee_id = $leave['employee_id'];
+    $leave_type = $leave['leave_type'];
+    $start_date = $leave['start_date'];
+    $end_date = $leave['end_date'];
+
+    // 2. Calculate the number of days
+    $days = (strtotime($end_date) - strtotime($start_date)) / 86400 + 1;
+
+    // 3. Update timeoff status
+    $conn->query("UPDATE timeoff SET status='Approved' WHERE timeoff_id=$timeoff_id");
+
+    // 4. Insert into leave_requests table
+    $stmt = $conn->prepare("
+        INSERT INTO leave_requests (employee_id, leave_type, days_requested, status)
+        VALUES (?, ?, ?, 'approved')
+    ");
+    $stmt->bind_param("isi", $employee_id, $leave_type, $days);
+    $stmt->execute();
+
+    // 5. Update leave_balance (subtract used days)
+    $conn->query("
+        UPDATE leave_balance 
+        SET $leave_type = $leave_type - $days 
+        WHERE employee_id = $employee_id
+    ");
+}
+
 
     function getEmployeesArray($conn) {
         $employees = [];
