@@ -36,6 +36,22 @@ PHP<?php
         $_SESSION['user_name'] = $name;
     }
 
+    if (isset($_GET['delete'])) {
+    $id = intval($_GET['delete']);
+    
+    $doc = $conn->query("SELECT filename FROM employee_documents WHERE id = $id AND employee_id = $employee_id")->fetch_assoc();
+
+    if ($doc) {
+        $path = "../../uploads/documents/" . $doc['filename'];
+        if (file_exists($path)) unlink($path);
+
+        $conn->query("DELETE FROM employee_documents WHERE id = $id");
+    }
+
+    header("Location: update_details.php");
+    exit;
+}
+
     // === HR REQUIRED DOCUMENTS (ONLY YOUR 4) ===
 $document_types = [
     'ID'             => 'ID / Passport',
@@ -339,6 +355,82 @@ html, body {
     }
 }
 
+/* Document Upload Card */
+.card {
+    border-radius: 15px;
+}
+
+/* File Input */
+.upload-input {
+    padding: 14px;
+    border-radius: 10px;
+}
+
+/* Upload Button */
+.upload-btn {
+    border-radius: 10px;
+    font-size: 17px;
+    font-weight: 600;
+    background-color: #ff9500;
+    border: none;
+    transition: 0.3s ease;
+}
+
+.upload-btn:hover {
+    background-color: #e38400;
+    transform: translateY(-2px);
+}
+
+/* Success + Error Alerts */
+.success-message, .error-message {
+    padding: 12px 20px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.doc-card {
+    border-radius: 12px;
+    transition: 0.25s ease;
+}
+
+.doc-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.delete-icon i {
+    font-size: 18px;
+    transition: 0.2s;
+}
+
+.delete-icon:hover i {
+    color: #b30000;
+    transform: scale(1.15);
+}
+
+.file-preview {
+    height: 125px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 10px;
+}
+
+.file-preview i {
+    opacity: 0.7;
+}
+
+
 .uploaded-documents {
     margin-top: 25px;
     background: #fff;
@@ -517,62 +609,92 @@ html, body {
 
                 <div class="documents-section">
 
-            <?= $upload_message ?>
+    <?= $upload_message ?>
 
-            <form method="POST" enctype="multipart/form-data" class="upload-form">
-                <div>
-                    <label><strong>Document Type</strong></label>
-                    <select name="doc_type" required>
-                        <option value="">Choose Document</option>
-                        <?php foreach ($document_types as $key => $label): ?>
-                            <option value="<?= $key ?>"><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <label><strong>Select File</strong></label>
-                    <input type="file" name="document_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
-                </div>
-                <div>
-                    <button type="submit" name="upload_document" class="upload-btn">
-                        Upload Document
-                    </button>
-                </div>
-            </form>
+    <form method="POST" enctype="multipart/form-data" class="row g-4">
 
-                  
-                </form>
-                <p id="error_message" style="color:red;"></p>
-                <?php if (!empty($message)) : ?>
-                    <p class="success-message"><?php echo $message; ?></p>
-                <?php endif; ?>
-            </div>
-             <h3>Uploaded Documents</h3>
-
-<div class="uploaded-documents">
-    <?php foreach ($document_types as $key => $label): ?>
-        <div class="doc-item">
-            <strong><?= $label ?>:</strong>
-
-            <?php if (isset($docs[$key])): ?>
-                <a href="../../uploads/documents/<?= $docs[$key]['filename'] ?>" 
-                   target="_blank" class="doc-link">
-                   View / Download
-                </a>
-                <span class="upload-date">
-                    (Uploaded: <?= date('Y-m-d', strtotime($docs[$key]['upload_date'])) ?>)
-                </span>
-            <?php else: ?>
-                <span class="missing-doc">Not Uploaded</span>
-            <?php endif; ?>
+        <!-- Document Type -->
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Document Type</label>
+            <select name="doc_type" class="form-select form-select-lg" required>
+                <option value="">Choose Document</option>
+                <?php foreach ($document_types as $key => $label): ?>
+                    <option value="<?= $key ?>"><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
-    <?php endforeach; ?>
+
+        <!-- File Picker -->
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Select File</label>
+            <input type="file" 
+                   name="document_file" 
+                   class="form-control form-control-lg upload-input"
+                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                   required>
+        </div>
+
+        <!-- Upload Button -->
+        <div class="col-12 text-end">
+            <button type="submit" name="upload_document" class="btn btn-warning btn-lg px-4 upload-btn">
+                <i class="fas fa-cloud-upload-alt me-2"></i>Upload Document
+            </button>
+        </div>
+    </form>
 </div>
 
+<div class="card shadow-sm p-4 mt-4">
+    <h4 class="mb-3"><i class="fas fa-folder-open me-2 text-warning"></i>Your Uploaded Documents</h4>
+
+    <div class="row g-4">
+
+        <?php
+        $docs = $conn->query("SELECT * FROM employee_documents WHERE employee_id = $employee_id");
+
+        if ($docs && $docs->num_rows > 0):
+            while ($d = $docs->fetch_assoc()):
+                $filepath = "../../uploads/documents/" . $d['filename'];
+                $size = file_exists($filepath) ? filesize($filepath) : 0;
+                $size_mb = round($size / (1024 * 1024), 2);
+        ?>
+
+        <div class="col-md-4">
+            <div class="doc-card p-3 shadow-sm">
+                <div class="d-flex justify-content-between">
+                    <h6 class="fw-bold"><?= $d['doc_type'] ?></h6>
+
+                    <!-- DELETE ICON -->
+                    <a href="update_details.php?delete=<?= $d['id'] ?>"
+                       class="text-danger delete-icon"
+                       onclick="return confirm('Delete this document?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+
+                <div class="mt-3">
+                    <!-- PREVIEW -->
+                    <?php if (preg_match('/\.(jpg|jpeg|png)$/i', $d['filename'])): ?>
+                        <img src="<?= $filepath ?>" class="img-fluid rounded">
+                    <?php else: ?>
+                        <div class="file-preview bg-light p-3 text-center rounded">
+                            <i class="fas fa-file-pdf fa-2x text-danger"></i>
+                            <p class="mt-2 small"><?= $d['filename'] ?></p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- FILE SIZE -->
+                <p class="mt-2 small text-muted">Size: <?= $size_mb ?> MB</p>
+
+                <!-- DOWNLOAD -->
+                <a href="<?= $filepath ?>" download class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="fas fa-download me-1"></i>Download
+                </a>
+
+            </div>
         </div>
     </div>
 
-   
     <script src="../../js/script.js"></script>
 
 </body>
