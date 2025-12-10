@@ -607,7 +607,6 @@ function updateProfilePic(event) {
             ?>
 
             <div class="announcements">
-                <div class="line"></div>
                 <div class="header">
                     <h2>Announcements</h2>
                     <div class="underline"></div>
@@ -627,7 +626,7 @@ function updateProfilePic(event) {
             <br>
 
             <!--Start of the events calendar and all its style and function -->
-            <div class="line"></div>
+            
             <div class="header">
                 <h2>Events Calendar</h2>
                 <div class="underline"></div>
@@ -735,6 +734,9 @@ function updateProfilePic(event) {
                         width: 100%;
                         max-width: 350px;
                         margin: auto;
+                        margin-left: 30px;
+                        padding: 10px;
+                        box-sizing: border-box;
                     }
 
                     .add-announcement-btn, .manage-events-btn {
