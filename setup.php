@@ -285,7 +285,7 @@ try {
         }
     }
 
-    echo "✅ Database setup updated successfully!";
+    echo "";
 
 } catch (PDOException $e) {
     echo "❌ Error: " . $e->getMessage();
