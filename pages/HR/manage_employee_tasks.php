@@ -459,8 +459,6 @@ html, body {
             <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
             <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
-            <a href="#"><i class="fas fa-file"></i><span>Documents</span></a>
-            <a href="../Employee/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Employee</span></a>
             <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
         </nav>
     </aside>

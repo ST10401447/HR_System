@@ -133,7 +133,7 @@ if ($leave_id) {
                 <a href="view_employee_profiles.php"><i class="fas fa-users"></i> View Employee Profiles</a>
                 <a href="view_employee_list.php"><i class="fas fa-users"></i> Manage Employees</a>
                 <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                <a href="../Employee/dashboard.php"><i class="fas fa-sign-out-alt"></i> Switch to Employee</a>
+                
             </nav>
         </div>
 
