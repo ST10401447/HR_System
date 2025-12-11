@@ -220,6 +220,18 @@ try {
         }
     }
 
+    try {
+    $conn->exec("
+        ALTER TABLE pending_registrations 
+        ADD COLUMN employee_id VARCHAR(50) NULL
+    ");
+} catch (PDOException $e) {
+    // Ignore duplicate column error
+    if (strpos($e->getMessage(), '1060') === false) {
+        throw $e;
+    }
+}
+
     // ----------------------------
     // INSERT DEFAULT ADMIN USERS
     // ----------------------------
