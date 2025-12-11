@@ -209,6 +209,29 @@ try {
     UNIQUE KEY unique_emp_doc (employee_id, doc_type)
 ",
 
+            // UPLOADED DOCUMENTS
+            "uploaded_documents" => "
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    task_id INT,
+    document_name VARCHAR(255) NOT NULL,
+    document_path VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Submitted',
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX(employee_id),
+    INDEX(task_id)
+",
+
+            // TASK FILES
+            "task_files" => "
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX(task_id)
+",
+
         ]
     ];
 
@@ -297,7 +320,8 @@ try {
         }
     }
 
-    echo "";
+    echo "<h2 style='color: green; text-align: center; margin-top: 50px;'>✓ Setup Database Successfully</h2>";
+    echo "<p style='text-align: center; margin-top: 20px;'><a href='pages/login.php' style='font-size: 18px; text-decoration: none; color: #ff9500;'>Go to Login Page</a></p>";
 
 } catch (PDOException $e) {
     echo "❌ Error: " . $e->getMessage();

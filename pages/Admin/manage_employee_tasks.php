@@ -14,6 +14,26 @@
         die("Connection failed: " . $conn->connect_error);
     }
 
+    // Handle document download/view
+    if (isset($_GET['view_file'])) {
+        $file_id = $_GET['view_file'];
+        $result = $conn->query("SELECT * FROM task_files WHERE id = $file_id");
+        $file = $result->fetch_assoc();
+        
+        if ($file) {
+            $file_path = '../../resources/task_files/' . $file['file_path'];
+            
+            if (file_exists($file_path)) {
+                header('Content-Description: File Transfer');
+                header('Content-Type: application/octet-stream');
+                header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+                header('Content-Length: ' . filesize($file_path));
+                readfile($file_path);
+                exit;
+            }
+        }
+    }
+
     // Handle delete
     if (isset($_POST['delete_id'])) {
         $delete_id = $_POST['delete_id'];
@@ -39,7 +59,34 @@
         $assigned_to_id = $_POST['employee_id'];
         $date = $_POST['date'];
         $status = $_POST['status'];
+        
+        // Insert the task
         $conn->query("INSERT INTO tasks (task_name, assigned_to, employee_id, task_date, manager, status) VALUES ('$task_name', '$assigned_to', '$assigned_to_id', '$date', '$user_name', '$status')");
+        $task_id = $conn->insert_id;
+        
+        // Handle file upload if present
+        if (isset($_FILES['task_file']) && $_FILES['task_file']['size'] > 0) {
+            $file = $_FILES['task_file'];
+            $allowed_types = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf'];
+            $max_size = 10 * 1024 * 1024; // 10MB
+            $upload_dir = '../../resources/task_files/';
+            
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            
+            // Validate file
+            if (in_array($file['type'], $allowed_types) && $file['size'] <= $max_size && $file['error'] === UPLOAD_ERR_OK) {
+                $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $file_name = 'task_' . $task_id . '_' . time() . '.' . $file_ext;
+                $file_path = $upload_dir . $file_name;
+                
+                if (move_uploaded_file($file['tmp_name'], $file_path)) {
+                    $conn->query("INSERT INTO task_files (task_id, file_name, file_path) VALUES ($task_id, '{$file['name']}', '$file_name')");
+                }
+            }
+        }
+        
         $confirmation_message = "New task created successfully!";
     }
 
@@ -418,17 +465,32 @@ html, body {
                                 <th>Task Name</th>
                                 <th>Assigned to</th>
                                 <th>Date</th>
+                                <th>Document Name</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($tasks as $task): ?>
+                                <?php
+                                    // Fetch document name for this task if it exists
+                                    $doc_stmt = $conn->query("SELECT id, file_name FROM task_files WHERE task_id = {$task['id']} LIMIT 1");
+                                    $doc_result = $doc_stmt->fetch_assoc();
+                                    $document_name = $doc_result ? $doc_result['file_name'] : 'N/A';
+                                    $file_id = $doc_result ? $doc_result['id'] : null;
+                                ?>
                                 <tr>
                                     <td><?= $task['id'] ?></td>
                                     <td><?= $task['task_name'] ?></td>
                                     <td><?= $task['assigned_to'] ?></td>
                                     <td><?= $task['task_date'] ?></td>
+                                    <td>
+                                        <?php if ($file_id): ?>
+                                            <a href="manage_employee_tasks.php?view_file=<?= $file_id ?>" class="doc-link" title="Click to download"><?= $document_name ?></a>
+                                        <?php else: ?>
+                                            N/A
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="status <?= strtolower($task['status']) ?>"><?= $task['status'] ?></td>
                                     <td>
                                         <button class="btn btn-edit" onclick="openEditModal(<?= $task['id'] ?>, '<?= $task['task_name'] ?>', '<?= $task['assigned_to'] ?>', '<?= $task['employee_id'] ?>', '<?= $task['task_date'] ?>', '<?= $task['status'] ?>')">Edit</button>
@@ -462,7 +524,7 @@ html, body {
                     <h2>Create New Task</h2>
                     <button class="modal-close" onclick="closeModal()">&times;</button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="create_task" value="1">
                     <input type="text" name="task_name" placeholder="Task Name" required>
                     <select name="assigned_to" id="assigned_to_create" required>
@@ -482,6 +544,12 @@ html, body {
                         <option value="Completed">Completed</option>
                         <option value="Incomplete">Incomplete</option>
                     </select>
+                    
+                    <!-- File Upload Field -->
+                    <label for="task_file" style="font-weight: 600; margin-top: 10px; display: block;">Upload Task File (Optional):</label>
+                    <input type="file" name="task_file" id="task_file" accept=".doc,.docx,.pdf" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box;">
+                    <small style="color: #666; display: block; margin-top: 5px;">Accepted formats: Word (.doc, .docx), PDF | Max size: 10MB</small>
+                    
                     <button type="submit">Save Task</button>
                 </form>
             </div>
@@ -529,7 +597,19 @@ body {
   text-align: center;
   font-size: 17.5px;
   font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
+}
 
+.doc-link {
+  color: #ff9500;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.doc-link:hover {
+  color: #e68a00;
+  text-decoration: underline;
 }
 
 </style>
