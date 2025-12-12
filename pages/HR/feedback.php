@@ -77,7 +77,8 @@ if ($winner_id) {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            /* make page background clear/transparent so underlying site background shows */
+            
         }
 
         /* Sidebar styles */
@@ -118,7 +119,6 @@ if ($winner_id) {
         }
 
         th {
-            background-color: #ff9500;
             color: white;
             font-weight: bold;
         }
