@@ -1,5 +1,11 @@
 PHP<?php
     include 'confirm_employee.php';
+$employee_id = $_SESSION['employee_id'] ?? null;
+
+if (!$employee_id) {
+    die("Error: Employee ID not found in session.");
+}
+
     
     // Database connection variables
     $host = "localhost";
@@ -77,9 +83,21 @@ if (isset($_POST['upload_document'])) {
     }
 }
     // Fetch employees
-    $result = $conn->query("SELECT * FROM users WHERE employee_id=$employee_id");
-    $employee_pre = $result->fetch_all(MYSQLI_ASSOC);
-    $employee = $employee_pre[0];
+  $result = $conn->query("SELECT * FROM users WHERE employee_id='$employee_id'");
+
+
+if (!$result) {
+    die("SQL Error: " . $conn->error);
+}
+
+$employee_pre = $result->fetch_all(MYSQLI_ASSOC);
+
+if (empty($employee_pre)) {
+    die("Error: Employee not found.");
+}
+
+$employee = $employee_pre[0];
+
 
     $docs = [];
 $doc_query = $conn->prepare("
