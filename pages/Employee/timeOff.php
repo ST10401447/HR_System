@@ -1,6 +1,6 @@
 <?php
 include 'confirm_employee.php';
-$display = $_SESSION['switch_button'];
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $leave_type = $_POST["leave_type"] ?? '';
