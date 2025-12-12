@@ -119,7 +119,8 @@ if ($winner_id) {
         }
 
         th {
-            color: white;
+            
+            color: white; 
             font-weight: bold;
         }
 
@@ -127,9 +128,7 @@ if ($winner_id) {
             background-color: #f2f2f2;
         }
 
-        tr:hover {
-            background-color: #ddd;
-        }
+        
 
         /* Hamburger menu button styles */
         .hamburger {
