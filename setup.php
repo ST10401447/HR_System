@@ -40,53 +40,43 @@ try {
     // ---------------------
     $tables = [
         $db1 => [
-
-            // USERS (MODERNISED)
             "users" => "
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255),
-                email VARCHAR(255) UNIQUE,
-                employee_id VARCHAR(50) UNIQUE,
-                password VARCHAR(255),
-                department VARCHAR(255),
-                role VARCHAR(255),
-                profile_picture VARCHAR(255),
-                company_id VARCHAR(255),
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    employee_id VARCHAR(50) UNIQUE,
+    password VARCHAR(255),
+    department VARCHAR(255),
+    role VARCHAR(255),
+    profile_picture VARCHAR(255),
+    title VARCHAR(255),
+    dob DATE,
+    nationality VARCHAR(255),
+    gender VARCHAR(255),
+    race VARCHAR(255),
+    mobile VARCHAR(20),
+    address TEXT,
+    city VARCHAR(255),
+    country VARCHAR(255),
+    bio TEXT,
+    theme VARCHAR(20) DEFAULT 'light',
+    profile_status VARCHAR(50) DEFAULT 'incomplete',
+    start_date DATE,
+    emergency_name VARCHAR(255),
+    emergency_number VARCHAR(20),
+    last_login TIMESTAMP NULL,
+    login_attempts INT DEFAULT 0,
+    locked_until TIMESTAMP NULL,
+    account_status ENUM('active','locked','disabled') DEFAULT 'active',
+    password_reset_token VARCHAR(255) NULL,
+    password_reset_expires TIMESTAMP NULL,
+    INDEX(email),
+    INDEX(employee_id)
+",
 
-                -- Modern profile fields
-                title VARCHAR(255),
-                dob DATE,
-                nationality VARCHAR(255),
-                gender VARCHAR(255),
-                race VARCHAR(255),
-                mobile VARCHAR(20),
-                address TEXT,
-                city VARCHAR(255),
-                country VARCHAR(255),
-                bio TEXT,
-                theme VARCHAR(20) DEFAULT 'light',
-                profile_status VARCHAR(50) DEFAULT 'incomplete',
 
-                -- Employment
-                start_date DATE,
 
-                -- Emergency
-                emergency_name VARCHAR(255),
-                emergency_number VARCHAR(20),
-
-                -- Secure Login Fields
-                last_login TIMESTAMP NULL,
-                login_attempts INT DEFAULT 0,
-                locked_until TIMESTAMP NULL,
-                account_status ENUM('active','locked','disabled') DEFAULT 'active',
-                password_reset_token VARCHAR(255) NULL,
-                password_reset_expires TIMESTAMP NULL,
-
-                INDEX(email),
-                INDEX(employee_id)
-            ",
-
-            // PENDING REGISTRATION (MODERNISED)
+       // PENDING REGISTRATION (MODERNISED)
             "pending_registrations" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255),
@@ -95,7 +85,6 @@ try {
                 phone VARCHAR(20),
                 password VARCHAR(255),
                 department VARCHAR(255),
-                company_id VARCHAR(255),
                 request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 status ENUM('pending','approved','rejected') DEFAULT 'pending',
                 admin_notes TEXT,
@@ -271,7 +260,6 @@ try {
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-AD-2025'
         ],
         [
             'name' => 'Samson',
@@ -281,7 +269,6 @@ try {
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
         ],
          [
             'name' => 'HR Manager',
@@ -291,7 +278,6 @@ try {
             'department' => 'HR Team',
             'role' => 'HR',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
          ],
          [
             'name' => 'Management Team',
@@ -301,7 +287,6 @@ try {
             'department' => 'Management',
             'role' => 'Manager',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
         ]
     ];
 
@@ -311,11 +296,11 @@ try {
 
         if ($stmt->fetchColumn() == 0) {
             $sql = "
-                INSERT INTO users 
-                (name, email, employee_id, password, department, role, profile_picture, company_id)
-                VALUES 
-                (:name, :email, :employee_id, :password, :department, :role, :profile_picture, :company_id)
-            ";
+    INSERT INTO users 
+    (name, email, employee_id, password, department, role, profile_picture)
+    VALUES 
+    (:name, :email, :employee_id, :password, :department, :role, :profile_picture)
+";
             $stmtInsert = $conn->prepare($sql);
             $stmtInsert->execute($user);
         }
