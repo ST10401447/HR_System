@@ -35,19 +35,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             // CREATE USER IN DATABASE
-            $stmt = $conn->prepare("
-                INSERT INTO users 
-                (name, email, employee_id, password, department, role, profile_picture, company_id)
-                VALUES (?, ?, ?, ?, ?, 'Employee', '../../resources/UserIcon.jpg', ?)
-            ");
-            $stmt->execute([
-                $request['name'],
-                $request['email'],
-                $employee_id,
-                $request['password'],
-                $request['department'],
-                $request['company_id']
-            ]);
+         $stmt = $conn->prepare("
+    INSERT INTO users 
+    (name, email, employee_id, password, department, role, profile_picture)
+    VALUES (?, ?, ?, ?, ?, 'Employee', '../../resources/UserIcon.jpg')
+");
+$stmt->execute([
+    $request['name'],
+    $request['email'],
+    $employee_id,
+    $request['password'],
+    $request['department']
+]);
 
             // Create leave balance
             $stmt = $conn->prepare("INSERT INTO leave_balance (employee_id, study, sick, maternity, annual, unpaid, compassionate) VALUES (?, 5, 10, 30, 15, 0, 3)");
@@ -139,7 +138,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <strong>Name:</strong> <?= htmlspecialchars($r['name']) ?><br>
                     <strong>Email:</strong> <?= htmlspecialchars($r['email']) ?><br>
                     <strong>Department:</strong> <?= htmlspecialchars($r['department']) ?><br>
-                    <strong>Company ID:</strong> <?= htmlspecialchars($r['company_id']) ?><br>
                     <strong>Date:</strong> <?= date('d M Y H:i', strtotime($r['request_date'])) ?>
                 </div>
 
