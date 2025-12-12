@@ -440,7 +440,7 @@ html, body {
             <nav class="nav-links">
                 <a href="dashboard.php"><i class="fas fa-home"></i><span>Dashboard</span></a>
                 <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
-                <a href="#"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
+                <a href="manage_leaves.php"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
                 <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>View Employee Profiles</span></a>
                 <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
                 <a href="admin_approve_registrations.php"><i class="fas fa-user-check"></i><span>Approve Registrations</span></a>
