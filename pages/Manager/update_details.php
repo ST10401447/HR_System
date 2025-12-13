@@ -1,84 +1,117 @@
 <?php
-    include 'confirm_admin.php';
-    
-    // Database connection variables
-    $host = "localhost";
-    $dbname = "users1";
-    $username = "root";
-    $password = "";
+include 'confirm_admin.php';
 
-    // Establish database connection
-    $conn = mysqli_connect($host, $username, $password, $dbname);
+// Database connection variables
+$host = "localhost";
+$dbname = "users1";
+$username = "root";
+$password = "";
 
-    // Check connection
-    if (!$conn) {
-        die("Connection error: " . mysqli_connect_error());
-    }
+// Establish database connection
+$conn = mysqli_connect($host, $username, $password, $dbname);
 
-    // Check if the form is submitted
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        // Retrieve form data using POST method
-        $name = $_POST["name"] ?? '';
-        $email = $_POST["email"] ?? '';
-        $title = $_POST["title"] ?? '';
-        $dob = $_POST["dob"] ?? '';
-        $nationality = $_POST["nationality"] ?? '';
-        $gender = $_POST["gender"] ?? '';
-        $race = $_POST["race"] ?? '';
-        $start_date = $_POST["start_date"] ?? '';
-        $mobile = $_POST["mobile"] ?? '';        
-        $emergency_name = $_POST["emergency_name"] ?? '';
-        $emergency_number = $_POST["emergency_number"] ?? '';
+// Check connection
+if (!$conn) {
+    die("Connection error: " . mysqli_connect_error());
+}
 
-        $conn->query("UPDATE users SET name='$name', email='$email', title='$title', dob='$dob', nationality='$nationality', gender='$gender', race='$race', start_date='$start_date', mobile='$mobile', emergency_name='$emergency_name', emergency_number='$emergency_number' WHERE employee_id=$employee_id");                       
+// ===============================
+// UPDATE EMPLOYEE DETAILS
+// ===============================
+if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['upload_document'])) {
 
-        $_SESSION['user_name'] = $name;
-    }
+    $name = $_POST["name"] ?? '';
+    $email = $_POST["email"] ?? '';
+    $title = $_POST["title"] ?? '';
+    $dob = $_POST["dob"] ?? '';
+    $nationality = $_POST["nationality"] ?? '';
+    $gender = $_POST["gender"] ?? '';
+    $race = $_POST["race"] ?? '';
+    $start_date = $_POST["start_date"] ?? '';
+    $mobile = $_POST["mobile"] ?? '';
+    $emergency_name = $_POST["emergency_name"] ?? '';
+    $emergency_number = $_POST["emergency_number"] ?? '';
 
-     // === HR REQUIRED DOCUMENTS (ONLY YOUR 4) ===
+    $conn->query("
+        UPDATE users SET
+            name='$name',
+            email='$email',
+            title='$title',
+            dob='$dob',
+            nationality='$nationality',
+            gender='$gender',
+            race='$race',
+            start_date='$start_date',
+            mobile='$mobile',
+            emergency_name='$emergency_name',
+            emergency_number='$emergency_number'
+        WHERE employee_id='$employee_id'
+    ");
+
+    $_SESSION['user_name'] = $name;
+}
+
+// ===============================
+// HR REQUIRED DOCUMENTS
+// ===============================
 $document_types = [
     'ID'             => 'ID / Passport',
-    'CONTRACT'        => 'Employment Contract',
-    'QUALIFICATIONS'  => 'Certificates / Qualifications',
-    'OTHER'           => 'Other Document'
+    'CONTRACT'       => 'Employment Contract',
+    'QUALIFICATIONS' => 'Certificates / Qualifications',
+    'OTHER'          => 'Other Document'
 ];
 
-// Handle document upload
+// ===============================
+// HANDLE DOCUMENT UPLOAD
+// ===============================
 $upload_message = '';
+
 if (isset($_POST['upload_document'])) {
+
     $doc_type = $_POST['doc_type'] ?? '';
     $file = $_FILES['document_file'] ?? null;
 
     if ($file && $file['error'] === 0 && array_key_exists($doc_type, $document_types)) {
+
         $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-        if (in_array($ext, $allowed) && $file['size'] <= 10_000_000) { // 10MB max
+        if (in_array($ext, $allowed) && $file['size'] <= 10_000_000) {
+
             $filename = $employee_id . "_" . $doc_type . "_" . time() . "." . $ext;
             $upload_dir = "../../uploads/documents/";
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
 
             if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
+
                 $stmt = $conn->prepare("
-                    INSERT INTO employee_documents (employee_id, doc_type, filename, upload_date) 
-                    VALUES (?, ?, ?, NOW()) 
-                    ON DUPLICATE KEY UPDATE filename = VALUES(filename), upload_date = NOW()
+                    INSERT INTO employee_documents (employee_id, doc_type, filename, upload_date)
+                    VALUES (?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        filename = VALUES(filename),
+                        upload_date = NOW()
                 ");
                 $stmt->bind_param("sss", $employee_id, $doc_type, $filename);
                 $stmt->execute();
-                $upload_message = "<div class='success-message'>✓ $document_types[$doc_type] uploaded successfully!</div>";
+
+                $upload_message = "<div class='success-message'>✓ {$document_types[$doc_type]} uploaded successfully!</div>";
             } else {
                 $upload_message = "<div class='error-message'>Upload failed. Please try again.</div>";
             }
         } else {
-            $upload_message = "<div class='error-message'>Invalid file. Only PDF, DOC, DOCX, JPG, PNG allowed (max 10MB).</div>";
+            $upload_message = "<div class='error-message'>Invalid file type or size.</div>";
         }
     }
 }
 
-  // Fetch employee safely
-$employee_id = mysqli_real_escape_string($conn, $employee_id);
-$sql = "SELECT * FROM users WHERE employee_id = '$employee_id'";
+// ===============================
+// FETCH EMPLOYEE DETAILS
+// ===============================
+$employee_id_safe = mysqli_real_escape_string($conn, $employee_id);
+$sql = "SELECT * FROM users WHERE employee_id = '$employee_id_safe'";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -86,7 +119,26 @@ if ($result && $result->num_rows > 0) {
 } else {
     die("Employee not found.");
 }
+
+// ===============================
+// FETCH UPLOADED DOCUMENTS//
+// ===============================
+$docs = [];
+
+$docQuery = $conn->prepare("
+    SELECT doc_type, filename, upload_date
+    FROM employee_documents
+    WHERE employee_id = ?
+");
+$docQuery->bind_param("s", $employee_id);
+$docQuery->execute();
+$docResult = $docQuery->get_result();
+
+while ($row = $docResult->fetch_assoc()) {
+    $docs[$row['doc_type']] = $row;
+}
 ?>
+
 
 
 <!DOCTYPE html>
