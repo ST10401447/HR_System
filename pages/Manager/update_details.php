@@ -15,6 +15,7 @@ if (!$conn) {
     die("Connection error: " . mysqli_connect_error());
 }
 
+
 // ===============================
 // UPDATE EMPLOYEE DETAILS
 // ===============================
@@ -61,52 +62,38 @@ $document_types = [
     'OTHER'          => 'Other Document'
 ];
 
-// ===============================
-// HANDLE DOCUMENT UPLOAD
-// ===============================
+// Handle document upload
 $upload_message = '';
-
 if (isset($_POST['upload_document'])) {
-
     $doc_type = $_POST['doc_type'] ?? '';
     $file = $_FILES['document_file'] ?? null;
 
     if ($file && $file['error'] === 0 && array_key_exists($doc_type, $document_types)) {
-
         $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-        if (in_array($ext, $allowed) && $file['size'] <= 10_000_000) {
-
+        if (in_array($ext, $allowed) && $file['size'] <= 10_000_000) { // 10MB max
             $filename = $employee_id . "_" . $doc_type . "_" . time() . "." . $ext;
             $upload_dir = "../../uploads/documents/";
-
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
             if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
-
                 $stmt = $conn->prepare("
-                    INSERT INTO employee_documents (employee_id, doc_type, filename, upload_date)
-                    VALUES (?, ?, ?, NOW())
-                    ON DUPLICATE KEY UPDATE
-                        filename = VALUES(filename),
-                        upload_date = NOW()
+                    INSERT INTO employee_documents (employee_id, doc_type, filename, upload_date) 
+                    VALUES (?, ?, ?, NOW()) 
+                    ON DUPLICATE KEY UPDATE filename = VALUES(filename), upload_date = NOW()
                 ");
                 $stmt->bind_param("sss", $employee_id, $doc_type, $filename);
                 $stmt->execute();
-
-                $upload_message = "<div class='success-message'>✓ {$document_types[$doc_type]} uploaded successfully!</div>";
+                $upload_message = "<div class='success-message'>✓ $document_types[$doc_type] uploaded successfully!</div>";
             } else {
                 $upload_message = "<div class='error-message'>Upload failed. Please try again.</div>";
             }
         } else {
-            $upload_message = "<div class='error-message'>Invalid file type or size.</div>";
+            $upload_message = "<div class='error-message'>Invalid file. Only PDF, DOC, DOCX, JPG, PNG allowed (max 10MB).</div>";
         }
     }
 }
-
 // ===============================
 // FETCH EMPLOYEE DETAILS
 // ===============================
