@@ -35,6 +35,47 @@
         $_SESSION['user_name'] = $name;
     }
 
+     // === HR REQUIRED DOCUMENTS (ONLY YOUR 4) ===
+$document_types = [
+    'ID'             => 'ID / Passport',
+    'CONTRACT'        => 'Employment Contract',
+    'QUALIFICATIONS'  => 'Certificates / Qualifications',
+    'OTHER'           => 'Other Document'
+];
+
+// Handle document upload
+$upload_message = '';
+if (isset($_POST['upload_document'])) {
+    $doc_type = $_POST['doc_type'] ?? '';
+    $file = $_FILES['document_file'] ?? null;
+
+    if ($file && $file['error'] === 0 && array_key_exists($doc_type, $document_types)) {
+        $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (in_array($ext, $allowed) && $file['size'] <= 10_000_000) { // 10MB max
+            $filename = $employee_id . "_" . $doc_type . "_" . time() . "." . $ext;
+            $upload_dir = "../../uploads/documents/";
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+
+            if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
+                $stmt = $conn->prepare("
+                    INSERT INTO employee_documents (employee_id, doc_type, filename, upload_date) 
+                    VALUES (?, ?, ?, NOW()) 
+                    ON DUPLICATE KEY UPDATE filename = VALUES(filename), upload_date = NOW()
+                ");
+                $stmt->bind_param("sss", $employee_id, $doc_type, $filename);
+                $stmt->execute();
+                $upload_message = "<div class='success-message'>✓ $document_types[$doc_type] uploaded successfully!</div>";
+            } else {
+                $upload_message = "<div class='error-message'>Upload failed. Please try again.</div>";
+            }
+        } else {
+            $upload_message = "<div class='error-message'>Invalid file. Only PDF, DOC, DOCX, JPG, PNG allowed (max 10MB).</div>";
+        }
+    }
+}
+
   // Fetch employee safely
 $employee_id = mysqli_real_escape_string($conn, $employee_id);
 $sql = "SELECT * FROM users WHERE employee_id = '$employee_id'";
@@ -410,6 +451,130 @@ html, body {
         display: block !important;
     }
 }
+
+.uploaded-documents {
+    margin-top: 25px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.doc-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.doc-item:last-child {
+    border-bottom: none;
+}
+
+.doc-link {
+    color: #0077cc;
+    margin-left: 10px;
+}
+
+.missing-doc {
+    color: red;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.upload-date {
+    margin-left: 10px;
+    color: #777;
+    font-size: 0.9em;
+}
+
+.upload-box {
+    max-width: 480px;
+    margin: 50px auto;
+    padding: 30px;
+    background: #f9fafb;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    font-family: system-ui, sans-serif;
+}
+
+.upload-box h2 {
+    margin: 0;
+    font-size: 22px;
+    color:  rgba(255, 149, 0, 0.95);;
+}
+
+.subtitle {
+    margin-bottom: 25px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.field {
+    margin-bottom: 20px;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.field select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: white;
+    font-size: 14px;
+}
+
+.drop-zone {
+    position: relative;
+    border: 2px dashed #c7d2fe;
+    border-radius: 14px;
+    padding: 30px;
+    text-align: center;
+    background: #eef2ff;
+    cursor: pointer;
+    margin-bottom: 25px;
+}
+
+.drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.drop-zone label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #4338ca;
+}
+
+.drop-zone span {
+    font-size: 12px;
+    color: #6366f1;
+}
+
+.upload-box button {
+    width: 100%;
+    padding: 14px;
+    background:  rgba(255, 149, 0, 0.95);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.upload-box button:hover {
+    background:  rgba(255, 149, 0, 0.95);
+}
+
 </style>
 
 <script>
@@ -454,7 +619,7 @@ html, body {
     </aside>
 
 
-        <div class="main-content">
+     <div class="main-content">
             <div class="update-details">
                 <h1>Update Details</h1>
                 <form method="POST" action="update_details.php" class="update-form">
@@ -468,9 +633,17 @@ html, body {
                         <input type="email" name="email" value="<?= $employee['email']?>" required>
                     </div>
 
-                    <div class="form-group">
+                   <div class="form-group">
                         <label>Title</label>
-                        <input type="text" name="title" value="<?= $employee['title']?>" required>
+                        <select name="title" required>
+                            <option value="">Select Title</option>
+                            <option <?= ($employee['title'] ?? '')=='Mr' ? 'selected' : '' ?>>Mr</option>
+                            <option <?= ($employee['title'] ?? '')=='Mrs' ? 'selected' : '' ?>>Mrs</option>
+                            <option <?= ($employee['title'] ?? '')=='Miss' ? 'selected' : '' ?>>Miss</option>
+                            <option <?= ($employee['title'] ?? '')=='Ms' ? 'selected' : '' ?>>Ms</option>
+                            <option <?= ($employee['title'] ?? '')=='Dr' ? 'selected' : '' ?>>Dr</option>
+                            <option <?= ($employee['title'] ?? '')=='Prof' ? 'selected' : '' ?>>Prof</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -480,17 +653,41 @@ html, body {
 
                     <div class="form-group">
                         <label>Nationality</label>
-                        <input type="text" name="nationality" value="<?= $employee['nationality']?>" required>
+                        <select name="nationality">
+                            <option value="">Select Nationality</option>
+                            <option <?= ($employee['nationality'] ?? '')=='South African' ? 'selected' : '' ?>>South African</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Nigerian' ? 'selected' : '' ?>>Nigerian</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Kenyan' ? 'selected' : '' ?>>Kenyan</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Ghanaian' ? 'selected' : '' ?>>Ghanaian</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Zimbabwean' ? 'selected' : '' ?>>Zimbabwean</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Indian' ? 'selected' : '' ?>>Indian</option>
+                            <option <?= ($employee['nationality'] ?? '')=='British' ? 'selected' : '' ?>>British</option>
+                            <option <?= ($employee['nationality'] ?? '')=='American' ? 'selected' : '' ?>>American</option>
+                            <option <?= ($employee['nationality'] ?? '')=='Other' ? 'selected' : '' ?>>Other</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
                         <label>Gender</label>
-                        <input type="text" name="gender" value="<?= $employee['gender']?>" required>
+                        <select name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option <?= ($employee['gender'] ?? '')=='Male' ? 'selected' : '' ?>>Male</option>
+                            <option <?= ($employee['gender'] ?? '')=='Female' ? 'selected' : '' ?>>Female</option>
+                            <option <?= ($employee['gender'] ?? '')=='Other' ? 'selected' : '' ?>>Other</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
                         <label>Race</label>
-                        <input type="text" name="race" value="<?= $employee['race']?>" required>
+                        <select name="race">
+                            <option value="">Select Race</option>
+                            <option <?= ($employee['race'] ?? '')=='Black' ? 'selected' : '' ?>>Black</option>
+                            <option <?= ($employee['race'] ?? '')=='White' ? 'selected' : '' ?>>White</option>
+                            <option <?= ($employee['race'] ?? '')=='Coloured' ? 'selected' : '' ?>>Coloured</option>
+                            <option <?= ($employee['race'] ?? '')=='Indian' ? 'selected' : '' ?>>Indian</option>
+                            <option <?= ($employee['race'] ?? '')=='Asian' ? 'selected' : '' ?>>Asian</option>
+                            <option <?= ($employee['race'] ?? '')=='Other' ? 'selected' : '' ?>>Other</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -516,32 +713,74 @@ html, body {
                     <button type="submit" class="save-button">Save</button>
                 </form>
 
-                <form action="../../php/upload_cv.php" method="post" enctype="multipart/form-data" onsubmit="return validateFile()">
-                    <input type="file" name="cv_file" id="cv_file" accept=".pdf,.doc,.docx" required>
-                    <br><br>
-                    
-                    <button type="submit" name="upload_cv"  class="download-button" style="
-    background-color: #ff9500; /* Primary blue */
-    color: white;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    text-decoration: none; /* Remove underline */
-    transition: background-color 0.3s ease; /* Smooth hover effect */
-    display: inline-block; /* Allows padding and margin */
-    text-align: center; /* Center text */
-">Upload CV</button>
+                <div class="documents-section">
+
+            <?= $upload_message ?>
+
+           <form method="POST" enctype="multipart/form-data" class="upload-box">
+    <h2>Upload Employee Document</h2>
+    <p class="subtitle">Securely upload required documents</p>
+
+    <div class="field">
+        <label>Document Type</label>
+        <select name="doc_type" required>
+            <option value="">Select document</option>
+            <?php foreach ($document_types as $key => $label): ?>
+                <option value="<?= htmlspecialchars($key) ?>">
+                    <?= htmlspecialchars($label) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="drop-zone">
+        <input type="file" name="document_file" id="document_file"
+               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+        <label for="document_file">
+            <strong>Click to upload</strong> or drag & drop  
+            <span>PDF, DOC, JPG, PNG (max 5MB)</span>
+        </label>
+    </div>
+
+    <button type="submit" name="upload_document">
+        Upload Document
+    </button>
+</form>
+
+
+                  
                 </form>
                 <p id="error_message" style="color:red;"></p>
                 <?php if (!empty($message)) : ?>
                     <p class="success-message"><?php echo $message; ?></p>
                 <?php endif; ?>
             </div>
+             <h3>Uploaded Documents</h3>
+
+<div class="uploaded-documents">
+    <?php foreach ($document_types as $key => $label): ?>
+        <div class="doc-item">
+            <strong><?= $label ?>:</strong>
+
+            <?php if (isset($docs[$key])): ?>
+                <a href="../../uploads/documents/<?= $docs[$key]['filename'] ?>" 
+                   target="_blank" class="doc-link">
+                   View / Download
+                </a>
+                <span class="upload-date">
+                    (Uploaded: <?= date('Y-m-d', strtotime($docs[$key]['upload_date'])) ?>)
+                </span>
+            <?php else: ?>
+                <span class="missing-doc">Not Uploaded</span>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+</div>
+
         </div>
     </div>
 
+   
     <script src="../../js/script.js"></script>
 
 </body>
