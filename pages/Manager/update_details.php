@@ -35,16 +35,17 @@
         $_SESSION['user_name'] = $name;
     }
 
-    // Fetch employees
-    $result = $conn->query("SELECT * FROM users WHERE employee_id=$employee_id");
-    $employee_pre = $result->fetch_all(MYSQLI_ASSOC);
-    $employee = $employee_pre[0];
+  // Fetch employee safely
+$employee_id = mysqli_real_escape_string($conn, $employee_id);
+$sql = "SELECT * FROM users WHERE employee_id = '$employee_id'";
+$result = $conn->query($sql);
+
+if ($result && $result->num_rows > 0) {
+    $employee = $result->fetch_assoc();
+} else {
+    die("Employee not found.");
+}
 ?>
-
-
-
-
-
 
 
 <!DOCTYPE html>

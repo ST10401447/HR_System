@@ -503,7 +503,6 @@ html, body {
                         <th>Employee ID</th>
                         <th>Department</th>
                         <th>Role</th>
-                        <th>Company ID</th>
                         <th>Date of Birth</th>
                         <th>Gender</th>
                         <th>Mobile</th>
@@ -532,7 +531,6 @@ html, body {
                                 echo "<td>" . htmlspecialchars($row['employee_id']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['department']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['role']) . "</td>";
-                                echo "<td>" . htmlspecialchars($row['company_id']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['dob']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['gender']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['mobile']) . "</td>";
