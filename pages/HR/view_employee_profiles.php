@@ -419,60 +419,6 @@ html, body {
     }
 }
 
-.documents-section {
-    background: white;
-    margin-top: 40px;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-}
-
-.documents-section h2 {
-    margin-bottom: 15px;
-}
-
-.documents-list {
-    margin-top: 20px;
-}
-
-.document-card {
-    display: flex;
-    align-items: center;
-    background: #fafafa;
-    padding: 12px 15px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-.document-card i {
-    font-size: 28px;
-    color: #ff9500;
-    margin-right: 15px;
-}
-
-.doc-details {
-    flex: 1;
-}
-
-.doc-name {
-    font-weight: 600;
-}
-
-.doc-date {
-    font-size: 12px;
-    color: gray;
-}
-
-.download-btn i {
-    font-size: 20px;
-    color: #ff9500;
-}
-
-.no-docs {
-    color: gray;
-    font-style: italic;
-}
 
 </style>
  <script>
@@ -520,6 +466,7 @@ html, body {
             <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
             <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
+            <a href="employee_documents.php"><i class="fas fa-folder-open"></i><span>Employee Documents</span></a>
             <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
         </nav>
     </aside>
@@ -620,30 +567,7 @@ html, body {
                     <button type="submit" class="save-button">Save</button>
                 </form>
 
-                <!-- DOCUMENT SECTION -->
-<div class="documents-section">
-    <h2>Uploaded Documents</h2>
-    <p class="doc-info">Documents uploaded by the selected employee will appear here.</p>
 
-    <div id="docsContainer" class="documents-list">
-        <?php if (!empty($documents)): ?>
-            <?php foreach ($documents as $doc): ?>
-                <div class="document-card">
-                    <i class="fas fa-file-alt"></i>
-                    <div class="doc-details">
-                        <p class="doc-name"><?= htmlspecialchars($doc['file_name']) ?></p>
-                        <p class="doc-date">Uploaded: <?= htmlspecialchars($doc['uploaded_at']) ?></p>
-                    </div>
-                    <a href="../../uploads/<?= htmlspecialchars($doc['file_name']) ?>" download class="download-btn">
-                        <i class="fas fa-download"></i>
-                    </a>
-                </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p class="no-docs">No documents uploaded yet.</p>
-        <?php endif; ?>
-    </div>
-</div>
 
 
                 <?php if (!empty($message)) : ?>

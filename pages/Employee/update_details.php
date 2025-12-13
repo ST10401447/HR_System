@@ -71,7 +71,7 @@ if (isset($_POST['upload_document'])) {
                     VALUES (?, ?, ?, NOW()) 
                     ON DUPLICATE KEY UPDATE filename = VALUES(filename), upload_date = NOW()
                 ");
-                $stmt->bind_param("iss", $employee_id, $doc_type, $filename);
+                $stmt->bind_param("sss", $employee_id, $doc_type, $filename);
                 $stmt->execute();
                 $upload_message = "<div class='success-message'>✓ $document_types[$doc_type] uploaded successfully!</div>";
             } else {
@@ -83,7 +83,10 @@ if (isset($_POST['upload_document'])) {
     }
 }
     // Fetch employees
-  $result = $conn->query("SELECT * FROM users WHERE employee_id='$employee_id'");
+  $stmt = $conn->prepare("SELECT * FROM users WHERE employee_id = ?");
+$stmt->bind_param("s", $employee_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
 
 if (!$result) {
@@ -105,7 +108,7 @@ $doc_query = $conn->prepare("
     FROM employee_documents 
     WHERE employee_id = ?
 ");
-$doc_query->bind_param("i", $employee_id);
+$doc_query->bind_param("s", $employee_id);
 $doc_query->execute();
 $result_docs = $doc_query->get_result();
 
