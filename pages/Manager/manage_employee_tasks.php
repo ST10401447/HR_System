@@ -2,22 +2,71 @@
     include 'confirm_admin.php';
 
     // Database connection
-    $host = 'localhost'; // database host
-    $dbname = 'users1'; // database name
-    $username = 'root'; // database username
-    $password = ''; // database password
+    $host = 'localhost';
+    $dbname = 'users1';
+    $username = 'root';
+    $password = '';
 
-    // Use the correct variable names for database connection
     $conn = new mysqli($host, $username, $password, $dbname);
 
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }
 
+    // Handle document download/view
+    if (isset($_GET['view_file'])) {
+        $file_id = $_GET['view_file'];
+        $result = $conn->query("SELECT * FROM task_files WHERE id = $file_id");
+        $file = $result->fetch_assoc();
+        
+        if ($file) {
+            $file_path = '../../resources/task_files/' . $file['file_path'];
+            
+            if (file_exists($file_path)) {
+                header('Content-Description: File Transfer');
+                header('Content-Type: application/octet-stream');
+                header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+                header('Content-Length: ' . filesize($file_path));
+                readfile($file_path);
+                exit;
+            }
+        }
+    }
+
+    // Handle employee document download
+    if (isset($_GET['download_employee_doc'])) {
+        $doc_id = $_GET['download_employee_doc'];
+        $result = $conn->query("SELECT * FROM uploaded_documents WHERE id = $doc_id");
+        $file = $result->fetch_assoc();
+        
+        if ($file) {
+            $file_path = '../../resources/uploaded_documents/' . $file['document_path'];
+            
+            if (file_exists($file_path)) {
+                header('Content-Description: File Transfer');
+                header('Content-Type: application/octet-stream');
+                header('Content-Disposition: attachment; filename="' . basename($file['document_name']) . '"');
+                header('Content-Length: ' . filesize($file_path));
+                readfile($file_path);
+                exit;
+            }
+        }
+    }
+
     // Handle delete
     if (isset($_POST['delete_id'])) {
         $delete_id = $_POST['delete_id'];
+        // Delete associated files first
+        $file_result = $conn->query("SELECT file_path FROM task_files WHERE task_id=$delete_id");
+        while ($file = $file_result->fetch_assoc()) {
+            $file_path = '../../resources/task_files/' . $file['file_path'];
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+        }
+        $conn->query("DELETE FROM task_files WHERE task_id=$delete_id");
         $conn->query("DELETE FROM tasks WHERE id=$delete_id");
+        $confirmation_message = "Task deleted successfully!";
     }
 
     // Handle edit
@@ -28,28 +77,72 @@
         $assigned_to_id = $_POST['employee_id'];
         $date = $_POST['date'];
         $status = $_POST['status'];
-        $conn->query("UPDATE tasks SET task_name='$task_name', assigned_to='$assigned_to', employee_id='$assigned_to_id', task_date='$date', manager='$user_name' status='$status' WHERE id=$edit_id");
+        $conn->query("UPDATE tasks SET task_name='$task_name', assigned_to='$assigned_to', employee_id='$assigned_to_id', task_date='$date', manager='$user_name', status='$status' WHERE id=$edit_id");
         $confirmation_message = "Task updated successfully!";
     }
 
-    // Handle create
+    // Handle create with MULTIPLE FILE UPLOAD
     if (isset($_POST['create_task'])) {
         $task_name = $_POST['task_name'];
         $assigned_to = $_POST['assigned_to'];
         $assigned_to_id = $_POST['employee_id'];
         $date = $_POST['date'];
         $status = $_POST['status'];
+        
+        // Insert the task
         $conn->query("INSERT INTO tasks (task_name, assigned_to, employee_id, task_date, manager, status) VALUES ('$task_name', '$assigned_to', '$assigned_to_id', '$date', '$user_name', '$status')");
-        $confirmation_message = "New task created successfully!";
+        $task_id = $conn->insert_id;
+        
+        // Handle MULTIPLE file uploads
+        if (isset($_FILES['task_files']) && !empty($_FILES['task_files']['name'][0])) {
+            $allowed_types = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+            $max_size = 10 * 1024 * 1024; // 10MB
+            $upload_dir = '../../resources/task_files/';
+            
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            
+            // Loop through each uploaded file
+            foreach ($_FILES['task_files']['tmp_name'] as $key => $tmp_name) {
+                $file_name = $_FILES['task_files']['name'][$key];
+                $file_size = $_FILES['task_files']['size'][$key];
+                $file_tmp = $_FILES['task_files']['tmp_name'][$key];
+                $file_type = $_FILES['task_files']['type'][$key];
+                $file_error = $_FILES['task_files']['error'][$key];
+                
+                // Validate each file
+                if ($file_error === UPLOAD_ERR_OK && in_array($file_type, $allowed_types) && $file_size <= $max_size) {
+                    $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+                    $new_file_name = 'task_' . $task_id . '_' . time() . '_' . $key . '.' . $file_ext;
+                    $file_path = $upload_dir . $new_file_name;
+                    
+                    if (move_uploaded_file($file_tmp, $file_path)) {
+                        $conn->query("INSERT INTO task_files (task_id, file_name, file_path) VALUES ($task_id, '$file_name', '$new_file_name')");
+                    }
+                }
+            }
+        }
+        
+        $confirmation_message = "New task created successfully with " . (isset($_FILES['task_files']) ? count(array_filter($_FILES['task_files']['name'])) : 0) . " file(s) uploaded!";
     }
 
-    // Fetch tasks
-    $result = $conn->query("SELECT * FROM tasks");
+    // Fetch tasks (oldest first)
+    $result = $conn->query("SELECT * FROM tasks ORDER BY task_date ASC");
     $tasks = $result->fetch_all(MYSQLI_ASSOC);
 
     // Fetch employees
-    $result = $conn->query("SELECT * FROM users");
+    $result = $conn->query("SELECT * FROM users WHERE role IN ('Employee', 'Manager', 'Admin')");
     $employees = $result->fetch_all(MYSQLI_ASSOC);
+
+    // Fetch employee submitted documents with employee names (oldest first)
+    $result = $conn->query("
+        SELECT ud.*, u.name as employee_name, u.employee_id 
+        FROM uploaded_documents ud
+        JOIN users u ON ud.employee_id = u.employee_id
+        ORDER BY ud.uploaded_at ASC
+    ");
+    $employee_submissions = $result->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -66,127 +159,58 @@
 </head>
 <body>
 
-
 <style>
-    /* Default styles for the sidebar */
-.sidebar {
-    width: 300px; /* Increased the sidebar width */
-    background-color: #ff9500;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding: 30px;
-    box-sizing: border-box;
-    transition: transform 0.3s ease-in-out;
-    font-size: 18px;
-}
-
-/* Hide the sidebar by default on small screens */
-@media screen and (max-width: 768px) {
     .sidebar {
-        transform: translateX(-100%);
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100vh;
+        width: 300px;
         background-color: #ff9500;
-        padding: 20px;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-    }
-}
-
-/* Hamburger menu button styles */
-.hamburger-menu {
-    display: none;
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    cursor: pointer;
-    z-index: 1100;
-}
-
-.hamburger-menu div {
-    width: 35px;
-    height: 5px;
-    background-color: black;
-    margin: 6px 0;
-    transition: 0.4s;
-}
-
-/* Show sidebar when active */
-.sidebar.active {
-    transform: translateX(0);
-}
-
-@media screen and (max-width: 768px) {
-    .hamburger-menu {
-        display: block;
-    }
-}
-
-   
-     .sidebar {
-            width: 300px; /* Increased the sidebar width */
-            background-color: #ff9500;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 30px;
-            box-sizing: border-box;
-            font-size: 18px;
-        }
-        .sidebar.active {
-        left: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 30px;
+        box-sizing: border-box;
+        transition: transform 0.3s ease-in-out;
+        font-size: 18px;
     }
 
-    /* Hamburger menu styles */
-    .hamburger {
-        display: none;
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        background: #ff9500;
-        padding: 10px;
-        border-radius: 5px;
-        cursor: pointer;
-        z-index: 1000;
-    }
-
-    .hamburger i {
-        font-size: 24px;
-        color: white;
-    }
-
-    /* Responsive styles */
     @media screen and (max-width: 768px) {
-        .hamburger {
-            display: block;
-        }
-
         .sidebar {
+            transform: translateX(-100%);
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 250px;
-            left: -250px;
-        }
-
-        .sidebar nav a {
-            padding: 15px;
-            font-size: 18px;
-        }
-
-        .profile-image {
-            width: 100px;
-            height: 100px;
-        }
-
-        .profile-info p {
-            font-size: 18px;
-        }
-
-        .main-content {
-            margin-left: 0;
+            height: 100vh;
+            background-color: #ff9500;
             padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+    }
+
+    .hamburger-menu {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        cursor: pointer;
+        z-index: 1100;
+    }
+
+    .hamburger-menu div {
+        width: 35px;
+        height: 5px;
+        background-color: black;
+        margin: 6px 0;
+        transition: 0.4s;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    @media screen and (max-width: 768px) {
+        .hamburger-menu {
+            display: block;
         }
     }
 
@@ -210,7 +234,6 @@
         overflow-y: auto;
     }
 
-    /* Hide sidebar on mobile by default */
     @media (max-width: 768px) {
         .sidebar {
             transform: translateX(-100%);
@@ -220,36 +243,33 @@
         }
     }
 
-    
-   .main-content {
-    margin-left: 300px;        
-    width: calc(100% - 300px);
-    min-height: 100vh;
-    padding: 30px;
-    padding-bottom: 100px;   
-    overflow-y: auto;
-    height: 100vh;          
-}
-    
+    .main-content {
+        margin-left: 300px;        
+        width: calc(100% - 300px);
+        min-height: 100vh;
+        padding: 30px;
+        padding-bottom: 100px;   
+        overflow-y: auto;
+        height: 100vh;          
+    }
 
+    .hamburger-menu {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        cursor: pointer;
+        z-index: 1100;
+    }
 
-   /* Hamburger menu button styles */
-.hamburger-menu {
-    display: none;
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    cursor: pointer;
-    z-index: 1100;
-}
+    .hamburger-menu div {
+        width: 35px;
+        height: 5px;
+        background-color: black;
+        margin: 6px 0;
+        transition: 0.4s;
+    }
 
-.hamburger-menu div {
-    width: 35px;
-    height: 5px;
-    background-color: black;
-    margin: 6px 0;
-    transition: 0.4s;
-}
     .overlay {
         display: none;
         position: fixed;
@@ -259,113 +279,102 @@
     }
     .overlay.active { display: block; }
 
-/* PROFILE */
+    .profile-section {
+        text-align: center;          
+        margin-bottom: 30px;
+        padding: 20px 0;             
+    }
 
+    .profile-image {
+        width: 120px;                 
+        height: 120px;
+        margin: 0 auto 15px auto;    
+        border-radius: 50%;           
+        overflow: hidden;             
+        border: 4px solid rgba(255,255,255,0.8);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;            
+    }
 
-.profile-section {
-    text-align: center;          
-    margin-bottom: 30px;
-    padding: 20px 0;             
-}
+    .profile-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;            
+        display: block;
+    }
 
+    .profile-btn {
+        background: rgba(255,255,255,0.25);
+        color: #fff;
+        border: none;
+        padding: 7px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.25s;
+    }
 
-.profile-image {
-    width: 120px;                 
-    height: 120px;
-    margin: 0 auto 15px auto;    
-    border-radius: 50%;           
-    overflow: hidden;             
-    border: 4px solid rgba(255,255,255,0.8);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;            
-}
+    .profile-btn:hover {
+        background: rgba(255,255,255,0.35);
+    }
 
-.profile-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;            
-    display: block;
-}
+    .nav-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
 
-.profile-btn {
-    background: rgba(255,255,255,0.25);
-    color: #fff;
-    border: none;
-    padding: 7px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.25s;
-}
+    .nav-links a span {
+        flex: 1;
+        white-space: nowrap;       
+        overflow: hidden;
+        text-overflow: ellipsis;   
+        text-align: left;
+        padding-left: 5px;          
+    }
 
-.profile-btn:hover {
-    background: rgba(255,255,255,0.35);
-}
+    .nav-links a {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 13px 16px;         
+        background: rgba(255,255,255,0.12);
+        border-radius: 12px;
+        color: white;
+        text-decoration: none;
+        font-size: 16px;
+        transition: all 0.25s ease;
+        overflow: hidden;         
+    }
 
-/* NAV LINKS */
-.nav-links {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+    .nav-links a i {
+        font-size: 19px;
+        width: 24px;
+        text-align: center;
+    }
 
-.nav-links a span {
-    flex: 1;
-    white-space: nowrap;       
-    overflow: hidden;
-    text-overflow: ellipsis;   
-    text-align: left;
-    padding-left: 5px;          
-}
+    .nav-links a span {
+        flex: 1;   
+    }
 
+    .nav-links a:hover {
+        background: rgba(255,255,255,0.22);
+        transform: translateX(3px);
+    }
 
-.nav-links a {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 13px 16px;         
-    background: rgba(255,255,255,0.12);
-    border-radius: 12px;
-    color: white;
-    text-decoration: none;
-    font-size: 16px;
-    transition: all 0.25s ease;
-    overflow: hidden;         
-}
+    .nav-links a.logout {
+        margin-top: auto;
+        background: rgba(247, 247, 247, 0.88);
+        color: red
+    }
 
-.nav-links a i {
-    font-size: 19px;
-    width: 24px;
-    text-align: center;
-}
+    .nav-links a.logout:hover {
+        background: rgba(0,0,0,0.35);
+    }
 
-/* TEXT ALIGNMENT */
-.nav-links a span {
-    flex: 1;   
-}
-
-/* Hover */
-.nav-links a:hover {
-    background: rgba(255,255,255,0.22);
-    transform: translateX(3px);
-}
-
-/* Logout item */
-.nav-links a.logout {
-    margin-top: auto;
-    background: rgba(247, 247, 247, 0.88);
-   color: red
-}
-
-.nav-links a.logout:hover {
-    background: rgba(0,0,0,0.35);
-}
-
-
-    /* Responsive styles */
     @media screen and (max-width: 768px) {
         .hamburger {
             display: block;
@@ -396,70 +405,149 @@
         }
     }
 
-
-html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    overflow-x: hidden;
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-        padding: 80px 15px 50px 15px !important;  
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
     }
-    
-    .hamburger {
-        display: block !important;
+
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding: 80px 15px 50px 15px !important;  
+        }
+        
+        .hamburger {
+            display: block !important;
+        }
     }
-}
+
+    body {
+      margin-top: 0px;
+      text-align: center;
+      font-size: 17.5px;
+      font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
+    }
+
+    .doc-link {
+      color: #ff9500;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .doc-link:hover {
+      color: #e68a00;
+      text-decoration: underline;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #ff9500;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px;
+        margin: 15px 0;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .file-upload-area:hover {
+        background-color: #fff5e6;
+    }
+
+    .file-list {
+        margin-top: 10px;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .file-list-item {
+        padding: 5px;
+        background: #f0f0f0;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+
+    .employee-submissions-section {
+        margin-top: 30px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .employee-submissions-section h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 24px;
+    }
+
+    .download-btn {
+        background: #ff9500;
+        color: white;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .download-btn:hover {
+        background: #e68600;
+    }
 </style>
-<!-- <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const hamburger = document.querySelector(".hamburger");
-        const sidebar = document.querySelector(".sidebar");
 
-        hamburger.addEventListener("click", function() {
-            sidebar.classList.toggle("active");
-        });
-    });
-</script> -->
+<div class="layout">
 
+<div class="hamburger" id="hamburger">
+    <i class="fas fa-bars"></i>
+</div>
 
-    <div class="layout">
-
-    <!-- HAMBURGER & OVERLAY -->
-    <div class="hamburger" id="hamburger"><i class="fas fa-bars"></i></div>
-    <div class="overlay" id="overlay"></div>
-
-    <!-- SIDEBAR - EXACT ADMIN STYLE -->
     <aside class="sidebar" id="sidebar">
-        <div class="profile-section">
-            <div class="profile-image">
-                <img src="<?php echo htmlspecialchars($profile_picture ?? '../../resources/default-avatar.png'); ?>" 
-                     id="profilePic" alt="Profile">
-            </div>
-            <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
-            <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
-                Change Picture
-            </button>
-            <input type="file" id="imageUpload" hidden accept="image/*">
-        </div>
+        <div class="sidebar-inner">
 
-        <nav class="nav-links">
-            <a href="dashboard.php" class="active"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
-            <a href="manage_leaves.php"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
-            <a href="update_details.php"><i class="fas fa-user"></i><span>Update Details</span></a>
-            <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
-        </nav>
+            <div class="profile-section">
+                <div class="profile-image">
+                    <img src="<?php echo htmlspecialchars($profile_picture); ?>" id="profilePic">
+                    <input type="file" id="imageUpload" hidden accept="image/*" onchange="updateProfilePic()">
+                </div>
+
+                <p class="profile-name"><?php echo htmlspecialchars($user_name); ?> - Admin</p>
+
+                <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
+                    Change Picture
+                </button>
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.php"><i class="fas fa-home"></i><span>Dashboard</span></a>
+                <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
+                <a href="#"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
+                <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>View Employee Profiles</span></a>
+                <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
+                <a href="admin_approve_registrations.php"><i class="fas fa-user-check"></i><span>Approve Registrations</span></a>
+                <a href="../Employee/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Employee</span></a>
+                <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </nav>
+
+        </div>
     </aside>
 
-        <!-- Main Content -->
         <div class="main-content">
             <h1>Manage Employee Tasks</h1>
+
+            <?php if (isset($confirmation_message)): ?>
+                <div class="confirmation-message">
+                    <?= $confirmation_message ?>
+                </div>
+            <?php endif; ?>
+
             <section class="task-table">
                 <h2>Assigning of tasks</h2>
                 <div class="tabular--wrapper">
@@ -470,23 +558,40 @@ html, body {
                                 <th>Task Name</th>
                                 <th>Assigned to</th>
                                 <th>Date</th>
+                                <th>Documents</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($tasks as $task): ?>
+                                <?php
+                                    // Fetch ALL documents for this task
+                                    $doc_stmt = $conn->query("SELECT id, file_name FROM task_files WHERE task_id = {$task['id']}");
+                                    $documents = $doc_stmt->fetch_all(MYSQLI_ASSOC);
+                                ?>
                                 <tr>
                                     <td><?= $task['id'] ?></td>
                                     <td><?= $task['task_name'] ?></td>
                                     <td><?= $task['assigned_to'] ?></td>
                                     <td><?= $task['task_date'] ?></td>
+                                    <td>
+                                        <?php if (count($documents) > 0): ?>
+                                            <?php foreach ($documents as $doc): ?>
+                                                <a href="manage_employee_tasks.php?view_file=<?= $doc['id'] ?>" class="doc-link" title="Click to download">
+                                                    <i class="fas fa-file-download"></i> <?= $doc['file_name'] ?>
+                                                </a><br>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            N/A
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="status <?= strtolower($task['status']) ?>"><?= $task['status'] ?></td>
                                     <td>
                                         <button class="btn btn-edit" onclick="openEditModal(<?= $task['id'] ?>, '<?= $task['task_name'] ?>', '<?= $task['assigned_to'] ?>', '<?= $task['employee_id'] ?>', '<?= $task['task_date'] ?>', '<?= $task['status'] ?>')">Edit</button>
                                         <form method="POST" style="display:inline;">
                                             <input type="hidden" name="delete_id" value="<?= $task['id'] ?>">
-                                            <button type="submit" class="btn btn-delete">Delete</button>
+                                            <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this task and all its files?')">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -495,16 +600,47 @@ html, body {
                     </table>
                 </div>
 
-                <!-- Button to create new task -->
                 <button class="create-task-btn" onclick="openModal()">+ Create Task</button>
             </section>
 
-            <!-- Confirmation Message -->
-            <?php if (isset($confirmation_message)): ?>
-                <div class="confirmation-message">
-                    <?= $confirmation_message ?>
-                </div>
-            <?php endif; ?>
+            <!-- Employee Submissions Section -->
+            <section class="employee-submissions-section">
+                <h2>Employee Document Submissions</h2>
+                <?php if (count($employee_submissions) > 0): ?>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Employee Name</th>
+                                <th>Employee ID</th>
+                                <th>Document Name</th>
+                                <th>Submitted Date</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($employee_submissions as $submission): ?>
+                                <tr>
+                                    <td><?= $submission['id'] ?></td>
+                                    <td><?= htmlspecialchars($submission['employee_name']) ?></td>
+                                    <td><?= htmlspecialchars($submission['employee_id']) ?></td>
+                                    <td><?= htmlspecialchars($submission['document_name']) ?></td>
+                                    <td><?= date('M d, Y - h:i A', strtotime($submission['uploaded_at'])) ?></td>
+                                    <td class="status <?= strtolower($submission['status']) ?>"><?= $submission['status'] ?></td>
+                                    <td>
+                                        <a href="manage_employee_tasks.php?download_employee_doc=<?= $submission['id'] ?>" class="download-btn">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p style="text-align: center; color: #999; padding: 20px;">No employee submissions yet.</p>
+                <?php endif; ?>
+            </section>
         </div>
 
         <!-- Modal for Create Task Form -->
@@ -514,7 +650,7 @@ html, body {
                     <h2>Create New Task</h2>
                     <button class="modal-close" onclick="closeModal()">&times;</button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="create_task" value="1">
                     <input type="text" name="task_name" placeholder="Task Name" required>
                     <select name="assigned_to" id="assigned_to_create" required>
@@ -524,7 +660,6 @@ html, body {
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Hidden input to store employee_id -->
                     <input type="hidden" name="employee_id" id="employee_id_hidden">
 
                     <input type="date" name="date" required>
@@ -534,6 +669,17 @@ html, body {
                         <option value="Completed">Completed</option>
                         <option value="Incomplete">Incomplete</option>
                     </select>
+                    
+                    <!-- MULTIPLE FILE UPLOAD -->
+                    <label for="task_files" style="font-weight: 600; margin-top: 10px; display: block;">Upload Task Files (Optional - Multiple):</label>
+                    <div class="file-upload-area" onclick="document.getElementById('task_files').click()">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #ff9500;"></i>
+                        <p>Click to upload multiple files</p>
+                        <small style="color: #666;">Accepted: Word, PDF, Images | Max 10MB each</small>
+                    </div>
+                    <input type="file" name="task_files[]" id="task_files" accept=".doc,.docx,.pdf,.jpg,.jpeg,.png" multiple style="display: none;">
+                    <div id="file_list" class="file-list"></div>
+                    
                     <button type="submit">Save Task</button>
                 </form>
             </div>
@@ -556,7 +702,6 @@ html, body {
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Hidden input to store employee_id -->
                     <input type="hidden" name="employee_id" id="employee_id_hidden_edit">
 
                     <input type="date" name="date" id="edit_date" required>
@@ -567,26 +712,42 @@ html, body {
                         <option value="Incomplete">Incomplete</option>
                     </select>
                     <button type="submit">Update Task</button>
-                    <!-- <div class="confirmation-message" style="display:show"></div> -->
                 </form>
             </div>
         </div>
     </div>
 
-
-    <style>
-
-body {
-  margin-top: 0px;
-  text-align: center;
-  font-size: 17.5px;
-  font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
-
-}
-
-</style>
-
     <script src="../../js/manage_employee_tasks.js"></script>
     <script src="../../js/script.js"></script>
+    <script>
+        // Show selected files
+        document.getElementById('task_files').addEventListener('change', function() {
+            const fileList = document.getElementById('file_list');
+            fileList.innerHTML = '';
+            
+            if (this.files.length > 0) {
+                fileList.innerHTML = '<strong>Selected Files:</strong>';
+                for (let i = 0; i < this.files.length; i++) {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-list-item';
+                    fileItem.innerHTML = `<i class="fas fa-file"></i> ${this.files[i].name}`;
+                    fileList.appendChild(fileItem);
+                }
+            }
+        });
+
+        // Update employee ID on selection
+        document.getElementById('assigned_to_create').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const employeeId = selectedOption.getAttribute('data-employee-id');
+            document.getElementById('employee_id_hidden').value = employeeId;
+        });
+
+        document.getElementById('edit_assigned_to').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const employeeId = selectedOption.getAttribute('data-employee-id');
+            document.getElementById('employee_id_hidden_edit').value = employeeId;
+        });
+    </script>
 </body>
 </html>

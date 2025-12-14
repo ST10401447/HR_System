@@ -65,14 +65,20 @@ if ($report_type) {
         echo "Error fetching leaves: " . $conn->error;
     }
 
-    // Fetch activities
-    $activity_sql = "SELECT * FROM activities WHERE timestamp BETWEEN '$start_date' AND '$end_date' ORDER BY timestamp DESC";
-    if ($result = $conn->query($activity_sql)) {
-        while ($row = $result->fetch_assoc()) {
-            $activities[] = $row;
+    // Fetch activities if the table exists
+    $table_check = $conn->query("SHOW TABLES LIKE 'activities'");
+    if ($table_check && $table_check->num_rows > 0) {
+        $activity_sql = "SELECT * FROM activities WHERE timestamp BETWEEN '$start_date' AND '$end_date' ORDER BY timestamp DESC";
+        if ($result = $conn->query($activity_sql)) {
+            while ($row = $result->fetch_assoc()) {
+                $activities[] = $row;
+            }
+        } else {
+            echo "Error fetching activities: " . $conn->error;
         }
     } else {
-        echo "Error fetching activities: " . $conn->error;
+        // activities table does not exist in this database — skip activities gracefully
+        $activities = [];
     }
 }
 
@@ -91,6 +97,15 @@ if (isset($_GET['download_pdf'])) {
     
     // Add a page
     $pdf->AddPage();
+    // Add a faint background logo (watermark) if available
+    $logoFile = __DIR__ . '/../../resources/TTG-Logo.png';
+    if (file_exists($logoFile)) {
+        // use low alpha if supported to make it a watermark
+        if (method_exists($pdf, 'SetAlpha')) { $pdf->SetAlpha(0.06); }
+        // place a large centered image as background
+        $pdf->Image($logoFile, 20, 60, 170, 0, '', '', '', false, 300, '', false, false, 0);
+        if (method_exists($pdf, 'SetAlpha')) { $pdf->SetAlpha(1); }
+    }
     
     // Set font for title
     $pdf->SetFont('helvetica', 'B', 16);
@@ -188,19 +203,42 @@ if (isset($_GET['download_pdf'])) {
         // Table header
         $pdf->SetFillColor(255, 149, 0);
         $pdf->SetTextColor(255);
-        $pdf->Cell(30, 7, 'Employee', 1, 0, 'L', true);
-        $pdf->Cell(30, 7, 'Activity Type', 1, 0, 'L', true);
-        $pdf->Cell(80, 7, 'Description', 1, 0, 'L', true);
-        $pdf->Cell(30, 7, 'Date', 1, 1, 'L', true);
+    $pdf->Cell(30, 7, 'Employee', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, 'Activity Type', 1, 0, 'L', true);
+    // give description more horizontal space so the date column doesn't wrap
+    $pdf->Cell(90, 7, 'Description', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, 'Date', 1, 1, 'L', true);
         
-        // Table content
+        // Table content (use MultiCell so description can wrap and row height adapts)
         $pdf->SetTextColor(0);
         $pdf->SetFillColor(255, 255, 255);
+        // column widths (sum should fit page width/margins)
+        $wEmp = 30;
+        $wType = 30;
+        $wDesc = 90;
+        $wDate = 30;
+        $minH = 6; // minimum row height
         foreach ($activities as $activity) {
-            $pdf->Cell(30, 6, isset($activity['employee_id']) ? $activity['employee_id'] : 'N/A', 1, 0, 'L');
-            $pdf->Cell(30, 6, isset($activity['activity_type']) ? $activity['activity_type'] : 'N/A', 1, 0, 'L');
-            $pdf->Cell(80, 6, isset($activity['description']) ? substr($activity['description'], 0, 50) . (strlen($activity['description']) > 50 ? '...' : '') : 'N/A', 1, 0, 'L');
-            $pdf->Cell(30, 6, isset($activity['timestamp']) ? $activity['timestamp'] : 'N/A', 1, 1, 'L');
+            $emp = isset($activity['employee_id']) ? $activity['employee_id'] : 'N/A';
+            $atype = isset($activity['activity_type']) ? $activity['activity_type'] : 'N/A';
+            $descText = isset($activity['description']) ? $activity['description'] : 'N/A';
+            $dateText = isset($activity['timestamp']) ? $activity['timestamp'] : 'N/A';
+
+            // compute required height for description cell
+            $descHeight = $pdf->getStringHeight($wDesc, $descText);
+            $rowH = max($minH, ceil($descHeight));
+
+            // Employee cell (vertical middle)
+            $pdf->MultiCell($wEmp, $rowH, $emp, 1, 'L', 0, 0, '', '', true, 0, false, true, $rowH, 'M');
+
+            // Activity Type cell
+            $pdf->MultiCell($wType, $rowH, $atype, 1, 'L', 0, 0, '', '', true, 0, false, true, $rowH, 'M');
+
+            // Description - allow wrapping inside this cell
+            $pdf->MultiCell($wDesc, $rowH, $descText, 1, 'L', 0, 0, '', '', true, 0, false, true, $rowH, 'M');
+
+            // Date cell - same row height, final cell with line break
+            $pdf->MultiCell($wDate, $rowH, $dateText, 1, 'L', 0, 1, '', '', true, 0, false, true, $rowH, 'M');
         }
     }
     
@@ -240,11 +278,14 @@ if ($result = $conn->query("SELECT DISTINCT YEAR(start_date) as year FROM timeof
     }
 }
 
-// Try to get years from activities
-if ($result = $conn->query("SELECT DISTINCT YEAR(timestamp) as year FROM activities")) {
-    while ($row = $result->fetch_assoc()) {
-        if (!in_array($row['year'], $years)) {
-            $years[] = $row['year'];
+// Try to get years from activities (only if table exists)
+$table_check = $conn->query("SHOW TABLES LIKE 'activities'");
+if ($table_check && $table_check->num_rows > 0) {
+    if ($result = $conn->query("SELECT DISTINCT YEAR(timestamp) as year FROM activities")) {
+        while ($row = $result->fetch_assoc()) {
+            if (!in_array($row['year'], $years)) {
+                $years[] = $row['year'];
+            }
         }
     }
 }
