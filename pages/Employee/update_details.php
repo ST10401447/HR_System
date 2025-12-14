@@ -399,6 +399,96 @@ html, body {
     font-size: 0.9em;
 }
     
+.upload-box {
+    max-width: 480px;
+    margin: 50px auto;
+    padding: 30px;
+    background: #f9fafb;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    font-family: system-ui, sans-serif;
+    position: relative;
+    z-index: 2
+}
+
+.upload-box h2 {
+    margin: 0;
+    font-size: 22px;
+    color:  rgba(255, 149, 0, 0.95);;
+}
+
+.subtitle {
+    margin-bottom: 25px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.field {
+    margin-bottom: 20px;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.field select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: white;
+    font-size: 14px;
+}
+
+.drop-zone {
+    position: relative;
+    border: 2px dashed #c7d2fe;
+    border-radius: 14px;
+    padding: 30px;
+    text-align: center;
+    background: #eef2ff;
+    cursor: pointer;
+    margin-bottom: 25px;
+}
+
+.drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.drop-zone label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #4338ca;
+}
+
+.drop-zone span {
+    font-size: 12px;
+    color: #6366f1;
+}
+
+.upload-box button {
+    width: 100%;
+    padding: 14px;
+    background:  rgba(255, 149, 0, 0.95);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.upload-box button:hover {
+    background:  rgba(255, 149, 0, 0.95);
+}
 
 </style>
 
@@ -544,28 +634,34 @@ html, body {
                 <div class="documents-section">
 
             <?= $upload_message ?>
+<form method="POST" enctype="multipart/form-data" class="upload-box">
+    <h2>Upload Employee Document</h2>
+    <p class="subtitle">Securely upload required documents</p>
 
-            <form method="POST" enctype="multipart/form-data" class="upload-form">
-                <div>
-                    <label><strong>Document Type</strong></label>
-                    <select name="doc_type" required>
-                        <option value="">Choose Document</option>
-                        <?php foreach ($document_types as $key => $label): ?>
-                            <option value="<?= $key ?>"><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <label><strong>Select File</strong></label>
-                    <input type="file" name="document_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
-                </div>
-                <div>
-                    <button type="submit" name="upload_document" class="upload-btn">
-                        Upload Document
-                    </button>
-                </div>
-            </form>
+    <div class="field">
+        <label>Document Type</label>
+        <select name="doc_type" required>
+            <option value="">Select document</option>
+            <?php foreach ($document_types as $key => $label): ?>
+                <option value="<?= htmlspecialchars($key) ?>">
+                    <?= htmlspecialchars($label) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
 
+   <div class="drop-zone" id="dropZone">
+    <input type="file" name="document_file" id="document_file"
+           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+
+    <div class="drop-content">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <strong id="dropText">Click to upload</strong>
+        <span id="fileHint">or drag & drop (PDF, DOC, JPG, PNG)</span>
+        <span id="fileName" class="file-name"></span>
+    </div>
+</div>
+<button type="submit" name="upload_document"> Upload Document </button>
                   
                 </form>
                 <p id="error_message" style="color:red;"></p>
@@ -573,6 +669,7 @@ html, body {
                     <p class="success-message"><?php echo $message; ?></p>
                 <?php endif; ?>
             </div>
+
              <h3>Uploaded Documents</h3>
 
 <div class="uploaded-documents">
@@ -600,6 +697,40 @@ html, body {
 
    
     <script src="../../js/script.js"></script>
+<script>
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("document_file");
+const fileName = document.getElementById("fileName");
+const dropText = document.getElementById("dropText");
 
+// Show filename when selected
+fileInput.addEventListener("change", () => {
+    if (fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+        dropText.textContent = "File selected";
+    }
+});
+
+// Drag events
+dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+});
+
+dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("dragover");
+});
+
+dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileName.textContent = e.dataTransfer.files[0].name;
+        dropText.textContent = "File selected";
+    }
+});
+</script>
 </body>
 </html>

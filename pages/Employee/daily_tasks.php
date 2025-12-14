@@ -1,125 +1,134 @@
 <?php
     include 'confirm_employee.php';
-
     require '../db.php';
 
-    $upload_message = '';
-    $upload_error = '';
-    
-    // Handle task file download
-    if (isset($_GET['download_file'])) {
-        $file_id = $_GET['download_file'];
-        $employee_id = $_SESSION['employee_id'];
-        
+    // Handle employee document upload
+    if (isset($_POST['upload_document']) && isset($_FILES['task_document'])) {
         try {
-            // Verify that the file belongs to a task assigned to this employee
-            $stmt = $conn->prepare("
-                SELECT tf.* 
-                FROM task_files tf 
-                JOIN tasks t ON tf.task_id = t.id 
-                WHERE tf.id = :file_id AND t.employee_id = :employee_id
-            ");
-            $stmt->execute([
-                'file_id' => $file_id,
-                'employee_id' => $employee_id
-            ]);
+            $employee_id = $_SESSION['employee_id'];
+            $file = $_FILES['task_document'];
+            
+            if ($file['error'] === UPLOAD_ERR_OK) {
+                $allowed_types = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf'];
+                $max_size = 5 * 1024 * 1024; // 5MB
+                
+                if (in_array($file['type'], $allowed_types) && $file['size'] <= $max_size) {
+                    $upload_dir = '../../resources/uploaded_documents/';
+                    
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+                    
+                    $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $new_file_name = 'emp_' . $employee_id . '_' . time() . '.' . $file_ext;
+                    $file_path = $upload_dir . $new_file_name;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $file_path)) {
+                        $stmt = $conn->prepare("INSERT INTO uploaded_documents (employee_id, document_name, document_path, status) 
+                                               VALUES (:employee_id, :document_name, :document_path, 'Submitted')");
+                        $stmt->execute([
+                            'employee_id' => $employee_id,
+                            'document_name' => $file['name'],
+                            'document_path' => $new_file_name
+                        ]);
+                        $success_message = "Document uploaded successfully!";
+                    }
+                } else {
+                    $error_message = "Invalid file type or size. Please upload Word or PDF files under 5MB.";
+                }
+            }
+        } catch (PDOException $e) {
+            $error_message = "Error uploading document: " . $e->getMessage();
+        }
+    }
+
+    // Handle document download
+    if (isset($_GET['download'])) {
+        try {
+            $doc_id = $_GET['download'];
+            $stmt = $conn->prepare("SELECT * FROM uploaded_documents WHERE id = :id");
+            $stmt->execute(['id' => $doc_id]);
             $file = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($file) {
-                $file_path = '../../resources/task_files/' . $file['file_path'];
-                
-                // Check if file exists
+                $file_path = '../../resources/uploaded_documents/' . $file['document_path'];
                 if (file_exists($file_path)) {
-                    // Download the file
                     header('Content-Description: File Transfer');
                     header('Content-Type: application/octet-stream');
-                    header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+                    header('Content-Disposition: attachment; filename="' . basename($file['document_name']) . '"');
                     header('Content-Length: ' . filesize($file_path));
-                    header('Pragma: public');
-                    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-                    
                     readfile($file_path);
                     exit;
                 }
             }
         } catch (PDOException $e) {
-            // File not found or error
+            echo "Error: " . $e->getMessage();
         }
     }
 
-    // Handle document upload
-    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['task_document'])) {
-        $file = $_FILES['task_document'];
-        $allowed_types = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf'];
-        $max_size = 5 * 1024 * 1024; // 5MB
-        $upload_dir = '../../resources/documents/';
-
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-
-        // Validate file
-        if (!in_array($file['type'], $allowed_types)) {
-            $upload_error = 'Invalid file type. Only Word documents (.doc, .docx) and PDFs are allowed.';
-        } elseif ($file['size'] > $max_size) {
-            $upload_error = 'File size exceeds 5MB limit.';
-        } elseif ($file['error'] !== UPLOAD_ERR_OK) {
-            $upload_error = 'Error uploading file. Please try again.';
-        } else {
-            // Generate unique filename
-            $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $file_name = 'task_' . $_SESSION['employee_id'] . '_' . time() . '.' . $file_ext;
-            $file_path = $upload_dir . $file_name;
-
-            if (move_uploaded_file($file['tmp_name'], $file_path)) {
-                try {
-                    $original_filename = $file['name'];
-                    $stmt = $conn->prepare("INSERT INTO uploaded_documents (employee_id, document_name, document_path, uploaded_at) VALUES (:employee_id, :document_name, :document_path, NOW())");
-                    $stmt->execute([
-                        'employee_id' => $_SESSION['employee_id'],
-                        'document_name' => $original_filename,
-                        'document_path' => $file_name
-                    ]);
-                    $upload_message = 'Document uploaded successfully and submitted to manager.';
-                } catch (PDOException $e) {
-                    $upload_error = 'Database error: ' . $e->getMessage();
-                    unlink($file_path); // Delete uploaded file if DB insert fails
+    // Handle manager file download
+    if (isset($_GET['download_task'])) {
+        try {
+            $file_id = $_GET['download_task'];
+            $stmt = $conn->prepare("SELECT * FROM task_files WHERE id = :id");
+            $stmt->execute(['id' => $file_id]);
+            $file = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($file) {
+                $file_path = '../../resources/task_files/' . $file['file_path'];
+                if (file_exists($file_path)) {
+                    header('Content-Description: File Transfer');
+                    header('Content-Type: application/octet-stream');
+                    header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+                    header('Content-Length: ' . filesize($file_path));
+                    readfile($file_path);
+                    exit;
                 }
-            } else {
-                $upload_error = 'Failed to save file. Please try again.';
             }
+        } catch (PDOException $e) {
+            echo "Error: " . $e->getMessage();
         }
     }
 
     try {
         $employee_id = $_SESSION['employee_id'];
-        $stmt = $conn->prepare("SELECT * FROM tasks WHERE employee_id = :employee_id ORDER BY task_date DESC");
-        $stmt->execute(['employee_id' => $employee_id]);
-        $dailyTasks_tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Fetch uploaded documents
+        // Fetch employee details
+        $stmt = $conn->prepare("SELECT name, profile_picture, role FROM users WHERE employee_id = :employee_id");
+        $stmt->execute(['employee_id' => $employee_id]);
+        $employee = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($employee) {
+            $user_name = $employee['name'];
+            $user_role = $employee['role'];
+            $profile_picture = !empty($employee['profile_picture']) ? $employee['profile_picture'] : '../../resources/default-avatar.png';
+        } else {
+            $user_name = "Employee";
+            $user_role = "Employee";
+            $profile_picture = '../../resources/default-avatar.png';
+        }
+        
+        // Fetch employee's submitted documents
         $stmt = $conn->prepare("SELECT * FROM uploaded_documents WHERE employee_id = :employee_id ORDER BY uploaded_at DESC");
         $stmt->execute(['employee_id' => $employee_id]);
-        $uploaded_documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $submitted_documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Fetch task files (files uploaded by admin)
-        if (!empty($dailyTasks_tasks)) {
-            $task_ids = implode(',', array_column($dailyTasks_tasks, 'id'));
-            $stmt = $conn->prepare("SELECT tf.*, t.task_name, t.manager, t.task_date FROM task_files tf JOIN tasks t ON tf.task_id = t.id WHERE tf.task_id IN ($task_ids)");
-            $stmt->execute();
-            $task_files = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            $task_files = [];
-        }
+        // Fetch tasks assigned to employee with their files
+        $stmt = $conn->prepare("
+            SELECT t.*, tf.id as file_id, tf.file_name, tf.uploaded_at as file_uploaded_at
+            FROM tasks t
+            LEFT JOIN task_files tf ON t.id = tf.task_id
+            WHERE t.employee_id = :employee_id
+            ORDER BY t.task_date DESC
+        ");
+        $stmt->execute(['employee_id' => $employee_id]);
+        $task_files = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
     } catch (PDOException $e) {
         echo "Error: " . $e->getMessage();
         die();
     }
-
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -130,713 +139,349 @@
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/daily_tasks.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <title>Daily Tasks</title>    
-</head>
-<body>
-
-<style>
-    .sidebar {
-            width: 300px; /* Increased the sidebar width */
+    <title>Daily Tasks</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .sidebar {
+            width: 300px;
             background-color: #ff9500;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
             padding: 30px;
-            box-sizing: border-box;
-            font-size: 18px;
+            overflow-y: auto;
         }
-        .sidebar.active {
-        left: 0;
-    }
-
-    /* Hamburger menu styles */
-    .hamburger {
-        display: none;
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        background: #ff9500;
-        padding: 10px;
-        border-radius: 5px;
-        cursor: pointer;
-        z-index: 1000;
-    }
-
-    .hamburger i {
-        font-size: 24px;
-        color: white;
-    }
-
-    /* Responsive styles */
-    @media screen and (max-width: 768px) {
+        
         .hamburger {
-            display: block;
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: #ff9500;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
         }
-
-        .sidebar {
-            width: 250px;
-            left: -250px;
+        
+        .hamburger i { font-size: 24px; color: white; }
+        
+        @media screen and (max-width: 768px) {
+            .hamburger { display: block; }
+            .sidebar { width: 250px; left: -250px; z-index: 999; transition: left 0.3s; }
+            .sidebar.active { left: 0; }
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 80px 20px 20px 20px !important; }
         }
-
-        .sidebar nav a {
-            padding: 15px;
-            font-size: 18px;
-        }
-
+        
+        .profile-section { text-align: center; margin-bottom: 30px; }
         .profile-image {
             width: 100px;
             height: 100px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid white;
         }
-
-        .profile-info p {
-            font-size: 18px;
+        .profile-image img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-button {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
         }
-
+        .profile-info p { color: white; font-weight: 600; }
+        
+        .sidebar nav { display: flex; flex-direction: column; gap: 10px; }
+        .sidebar nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .sidebar nav a:hover { background: rgba(255,255,255,0.22); }
+        .sidebar nav a.active { background: rgba(255,255,255,0.3); font-weight: bold; }
+        
         .main-content {
-            margin-left: 0;
-            padding: 20px;
+            margin-left: 300px;
+            padding: 30px;
+            min-height: 100vh;
         }
-    }
-
-     .layout {
-        min-height: 100vh;
-        position: relative;
-    }
-
-    
-    .sidebar {
-        width: 300px;
-        background: rgba(255, 149, 0, 0.95);
-        backdrop-filter: blur(5px);
-        height: 100vh;
-        position: fixed;
-        left: 0;
-        top: 0;
-        padding: 20px 18px;
-        box-shadow: 2px 0 15px rgba(0,0,0,0.15);
-        z-index: 1000;
-        transition: transform 0.35s ease;
-        overflow-y: auto;
-    }
-
-    .profile-section { text-align: center; margin-bottom: 30px; padding: 20px 0; }
-    .profile-image {
-        width: 120px; height: 120px;
-        margin: 0 auto 15px;
-        border-radius: 50%;
-        overflow: hidden;
-        border: 4px solid rgba(255,255,255,0.8);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-    .profile-image img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-name { color: white; font-size: 19px; font-weight: 600; margin: 10px 0; }
-    .profile-btn {
-        background: rgba(255,255,255,0.25);
-        color: white; border: none; padding: 8px 16px;
-        border-radius: 8px; cursor: pointer; font-size: 14px;
-    }
-    .profile-btn:hover { background: rgba(255,255,255,0.35); }
-
-    .nav-links { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-    .nav-links a {
-        display: flex; align-items: center; gap: 14px;
-        padding: 13px 16px; background: rgba(255,255,255,0.12);
-        border-radius: 12px; color: white; text-decoration: none;
-        font-size: 16px; transition: all 0.25s ease;
-    }
-    .nav-links a i { font-size: 19px; width: 24px; text-align: center; }
-    .nav-links a span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .nav-links a:hover { background: rgba(255,255,255,0.22); transform: translateX(5px); }
-    .nav-links a.active { background: rgba(255,255,255,0.3); font-weight: bold; }
-    .nav-links a.logout {
-        margin-top: auto;
-        background: rgba(247,247,247,0.95);
-        color: red;
-        font-weight: bold;
-    }
-    .nav-links a.logout:hover { background: #ff9500; color: white; }
-
-    /* HAMBURGER – MOBILE ONLY */
-    .hamburger {
-        display: none;
-        position: fixed;
-        top: 18px;
-        left: 18px;
-        background: #ff9500;
-        color: white;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        font-size: 24px;
-        cursor: pointer;
-        z-index: 1100;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-    @media (max-width: 768px) {
-        .hamburger { display: flex !important; }
-    }
-
-    .overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 999;
-    }
-    .overlay.active { display: block; }
-
-    @media (max-width: 768px) {
-        .sidebar { transform: translateX(-100%); }
-        .sidebar.active { transform: translateX(0); }
-    }
-
-    
-    .main-content {
-        margin-left: 300px;
-        min-height: 100vh;
-        padding: 30px 40px 150px 40px;
-        overflow-y: auto;                    
-        -webkit-overflow-scrolling: touch;
-        box-sizing: border-box;
-    }
-
-    @media (max-width: 768px) {
-        .main-content {
-            margin-left: 0 !important;
-            padding: 90px 20px 150px 20px !important;  /* space for hamburger */
+        
+        h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 30px;
         }
-    }
-
-   
-    .circular-slide {
-        font-size: 2.5em;
-        color: #000;
-        display: block;
-        text-align: center;
-        margin: 20px 0 40px 0;
-        animation: none; 
-    }
-    .circular-slide i { margin-right: 15px; color: #ff9500; }
-
-    @media (max-width: 768px) {
-        .circular-slide { font-size: 1.8em; }
-    }
-    @media (max-width: 480px) {
-        .circular-slide { font-size: 1.5em; }
-    }
-
-  
-    .card-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 30px;
-        justify-content: space-between;
-    }
-    .left, .right {
-        flex: 1;
-        min-width: 300px;
-    }
-html, body {
-    margin: 0;
-    padding: 0;
-   
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-        padding: 80px 15px 50px 15px !important;  
-    }
+        
+        .section-box {
+            background: white;
+            border: 2px solid #ff9500;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .form-note {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #ff9500;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background: #e68600;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table thead {
+            background: #ff9500;
+            color: white;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table tbody tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-submitted {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .download-btn {
+            background: #ff9500;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .download-btn:hover {
+            background: #e68600;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('active')">
+        <i class="fas fa-bars"></i>
+    </div>
     
-    .hamburger {
-        display: block !important;
-    }
-}
-
-</style>
-
-<!-- <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const hamburger = document.querySelector(".hamburger");
-        const sidebar = document.querySelector(".sidebar");
-
-        hamburger.addEventListener("click", function() {
-            sidebar.classList.toggle("active");
-        });
-    });
-</script> -->
-
-<div class="layout">
-
-    <!-- HAMBURGER & OVERLAY -->
-    <div class="hamburger" id="hamburger"><i class="fas fa-bars"></i></div>
-    <div class="overlay" id="overlay"></div>
-
-    <!-- SIDEBAR - EXACT ADMIN STYLE -->
-    <aside class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="profile-section">
             <div class="profile-image">
-                <img src="<?php echo htmlspecialchars($profile_picture ?? '../../resources/default-avatar.png'); ?>" 
-                     id="profilePic" alt="Profile">
+                <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile">
             </div>
-            <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
-            <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
-                Change Picture
-            </button>
-            <input type="file" id="imageUpload" hidden accept="image/*">
+            <button class="profile-button">Change Picture</button>
+            <div class="profile-info">
+                <p><?php echo htmlspecialchars($user_name); ?></p>
+                <p style="font-size: 14px; font-weight: normal;">Employee View</p>
+            </div>
         </div>
-
-        <nav class="nav-links">
-            <a href="dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
-            <a href="update_details.php"><i class="fas fa-user"></i><span>Update Details</span></a>
-            <a href="daily_tasks.php"><i class="fas fa-tasks"></i><span>Daily Tasks</span></a>
-            <a href="timeOff.php"><i class="fas fa-calendar-alt"></i><span>Time Off</span></a>
-            <a href="leave_balance.php"><i class="fas fa-calculator"></i><span>Leave Balance</span></a>
-            <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
-            <a href="../Admin/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Admin</span></a>
-            <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
+        <nav>
+            <a href="dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="daily_tasks.php" class="active"><i class="fas fa-tasks"></i> Daily Tasks</a>
+            <a href="timeOff.php"><i class="fas fa-calendar-alt"></i> Time Off</a>
+            <a href="leave_balance.php"><i class="fas fa-calculator"></i> Leave Balance</a>
+            <a href="update_details.php"><i class="fas fa-user"></i> Update Details</a>
+            <a href="feedback.php"><i class="fas fa-comment-dots"></i> Feedback</a>
+            <?php if ($user_role === 'Manager' || $user_role === 'Admin'): ?>
+                <a href="../Manager/dashboard.php"><i class="fas fa-exchange-alt"></i> Switch to Manager</a>
+            <?php endif; ?>
+            <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
-    </aside>
-            
-
-        
-       <!-- Main Content -->
-<div class="main-content dailyTasks_content">
-    <h1>Daily Tasks</h1>
-
-    <!-- Document Upload Section -->
-    <div class="upload-section">
-        <h2>Submit Task Document</h2>
-        <?php if (!empty($upload_message)): ?>
-            <div class="upload-success"><?php echo htmlspecialchars($upload_message); ?></div>
-        <?php endif; ?>
-        <?php if (!empty($upload_error)): ?>
-            <div class="upload-error"><?php echo htmlspecialchars($upload_error); ?></div>
-        <?php endif; ?>
-        <form method="POST" enctype="multipart/form-data" class="upload-form">
-            <div class="form-group">
-                <label for="task_document">Upload Document:</label>
-                <input type="file" name="task_document" id="task_document" accept=".doc,.docx,.pdf" required>
-                <small>Accepted formats: Word (.doc, .docx), PDF | Max size: 5MB</small>
-            </div>
-            <button type="submit" class="submit-btn">Upload & Submit to Manager</button>
-        </form>
     </div>
 
-    <!-- Uploaded Documents Section -->
-    <?php if (isset($uploaded_documents) && count($uploaded_documents) > 0): ?>
-    <div class="uploaded-docs-section">
-        <h2>Your Submitted Documents</h2>
-        <div class="documents-list">
-            <div class="documents-header">
-                <span>Document Name</span>
-                <span>Uploaded Date</span>
-                <span>Status</span>
+    <div class="main-content">
+        <h1>Daily Tasks</h1>
+
+        <?php if (isset($success_message)): ?>
+            <div class="success-message">
+                <i class="fas fa-check-circle"></i> <?= $success_message ?>
             </div>
-            <?php foreach ($uploaded_documents as $doc): ?>
-                <div class="document-row">
-                    <span><?php echo htmlspecialchars($doc['document_name']); ?></span>
-                    <span><?php echo date('M d, Y - h:i A', strtotime($doc['uploaded_at'])); ?></span>
-                    <span class="status-badge"><?php echo htmlspecialchars($doc['status'] ?? 'Submitted'); ?></span>
+        <?php endif; ?>
+
+        <?php if (isset($error_message)): ?>
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i> <?= $error_message ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Submit Task Document Section -->
+        <div class="section-box">
+            <h2 class="section-title">Submit Task Document</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Upload Document:</label>
+                    <input type="file" name="task_document" accept=".doc,.docx,.pdf" required>
+                    <p class="form-note">Accepted formats: Word (.doc, .docx), PDF | Max size: 5MB</p>
                 </div>
-            <?php endforeach; ?>
+                <button type="submit" name="upload_document" class="submit-btn">
+                    Upload & Submit to Manager
+                </button>
+            </form>
+        </div>
+
+        <!-- Your Submitted Documents Section -->
+        <div class="section-box">
+            <h2 class="section-title">Your Submitted Documents</h2>
+            <?php if (count($submitted_documents) > 0): ?>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Document Name</th>
+                            <th>Uploaded Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($submitted_documents as $doc): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($doc['document_name']) ?></td>
+                                <td><?= date('M d, Y - h:i A', strtotime($doc['uploaded_at'])) ?></td>
+                                <td>
+                                    <span class="status-badge status-submitted">
+                                        <?= htmlspecialchars($doc['status']) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p style="color: #999; text-align: center; padding: 20px;">No documents submitted yet.</p>
+            <?php endif; ?>
+        </div>
+
+        <!-- Task Files from Manager Section -->
+        <div class="section-box">
+            <h2 class="section-title">Task Files from Manager</h2>
+            <?php if (count($task_files) > 0): ?>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Task Name</th>
+                            <th>Uploaded File Name</th>
+                            <th>Manager</th>
+                            <th>Due Date</th>
+                            <th>Given Date & Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($task_files as $task): ?>
+                            <?php if ($task['file_id']): // Only show tasks with files ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($task['task_name']) ?></td>
+                                    <td><?= htmlspecialchars($task['file_name']) ?></td>
+                                    <td><?= htmlspecialchars($task['manager']) ?></td>
+                                    <td><?= date('M d, Y', strtotime($task['task_date'])) ?></td>
+                                    <td><?= date('M d, Y - h:i A', strtotime($task['file_uploaded_at'])) ?></td>
+                                    <td>
+                                        <a href="daily_tasks.php?download_task=<?= $task['file_id'] ?>" class="download-btn">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p style="color: #999; text-align: center; padding: 20px;">No task files from manager yet.</p>
+            <?php endif; ?>
         </div>
     </div>
-    <?php endif; ?>
 
-    <!-- Task Files Section (Files uploaded by Admin) -->
-    <?php if (isset($task_files) && count($task_files) > 0): ?>
-    <div class="task-files-section">
-        <h2>Task Files from Manager</h2>
-        <div class="files-list">
-            <div class="files-header">
-                <span>Task Name</span>
-                <span>Uploaded File Name</span>
-                <span>Manager</span>
-                <span>Due Date</span>
-                <span>Given Date & Time</span>
-                <span>Action</span>
-            </div>
-            <?php foreach ($task_files as $file): ?>
-                <div class="file-row">
-                    <span><?php echo htmlspecialchars($file['task_name']); ?></span>
-                    <span><?php echo htmlspecialchars($file['file_name']); ?></span>
-                    <span><?php echo htmlspecialchars($file['manager'] ?? 'N/A'); ?></span>
-                    <span><?php echo date('M d, Y', strtotime($file['task_date'])); ?></span>
-                    <span><?php echo date('M d, Y - h:i A', strtotime($file['uploaded_at'])); ?></span>
-                    <span><a href="daily_tasks.php?download_file=<?php echo $file['id']; ?>" class="download-btn" title="Download">
-                        <i class="fas fa-download"></i> Download
-                    </a></span>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-
-
-</div>
-<style>
-
-/* Upload Section Styles */
-.upload-section {
-    background-color: #f5f5f5;
-    border: 2px solid #ff9500;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.upload-section h2 {
-    color: #333;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 20px;
-}
-
-.upload-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.form-group label {
-    font-weight: 600;
-    color: #333;
-    font-size: 14px;
-}
-
-.form-group input[type="file"],
-.form-group select {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.form-group input[type="file"]:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #ff9500;
-    box-shadow: 0 0 5px rgba(255, 149, 0, 0.3);
-}
-
-.form-group small {
-    color: #666;
-    font-size: 12px;
-}
-
-.submit-btn {
-    background-color: #ff9500;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    transition: background-color 0.3s ease;
-}
-
-.submit-btn:hover {
-    background-color: #e68a00;
-}
-
-.submit-btn:active {
-    transform: scale(0.98);
-}
-
-.upload-success {
-    background-color: #d4edda;
-    color: #155724;
-    padding: 12px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    border: 1px solid #c3e6cb;
-}
-
-.upload-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 12px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    border: 1px solid #f5c6cb;
-}
-
-/* Uploaded Documents Section */
-.uploaded-docs-section {
-    background-color: #f5f5f5;
-    border: 2px solid #ff9500;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.uploaded-docs-section h2 {
-    color: #333;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 20px;
-}
-
-.documents-list {
-    width: 100%;
-}
-
-.documents-header {
-    display: flex;
-    background-color: #ff9500;
-    color: white;
-    font-weight: bold;
-    padding: 12px;
-    border-radius: 5px 5px 0 0;
-}
-
-.documents-header span {
-    flex: 1;
-    text-align: left;
-}
-
-.documents-header span:nth-child(2) {
-    flex: 1.2;
-}
-
-.document-row {
-    display: flex;
-    background-color: #fff;
-    border-bottom: 1px solid #ddd;
-    padding: 12px;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.document-row span {
-    flex: 1;
-    text-align: left;
-    font-size: 14px;
-}
-
-.document-row span:nth-child(2) {
-    flex: 1.2;
-    color: #666;
-}
-
-.document-row span:nth-child(3) {
-    text-align: center;
-}
-
-.status-badge {
-    background-color: #fff3e0;
-    color: #e65100;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-align: center;
-    width: fit-content;
-    border: 1px solid #ffb74d;
-    display: inline-block;
-}
-
-.document-row:hover {
-    background-color: #f9f9f9;
-}
-
-/* Main Content Styles */
-.main-content {
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Title Styles */
-.main-content h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-    color: #333;
-}
-
-/* Table Styles */
-.dailyTasks_tasksTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-/* Header Styles */
-.dailyTasks_tasksHeader {
-    display: flex;
-    background-color: #ff9500;
-    color: white;
-    font-weight: bold;
-    padding: 10px;
-}
-
-/* Header Item Styles */
-.dailyTasks_tasksHeader span {
-    flex: 1;
-    text-align: left;
-}
-
-/* Row Styles */
-.dailyTasks_taskRow {
-    display: flex;
-    background-color: #fff;
-    border-bottom: 1px solid #ddd;
-    padding: 10px;
-}
-
-/* Row Item Styles */
-.dailyTasks_taskRow span {
-    flex: 1;
-    text-align: left;
-    padding: 5px 0;
-}
-
-/* Hover Effect */
-.dailyTasks_taskRow:hover {
-    background-color: #f1f1f1;
-}
-
-/* File Indicator Styles */
-.file-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: #ff9500;
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.file-indicator i {
-    font-size: 16px;
-}
-
-.no-file {
-    color: #999;
-    font-style: italic;
-}
-
-/* Task Files Section */
-.task-files-section {
-    background-color: #f5f5f5;
-    border: 2px solid #ff9500;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.task-files-section h2 {
-    color: #333;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 20px;
-}
-
-.files-list {
-    width: 100%;
-}
-
-.files-header {
-    display: flex;
-    background-color: #ff9500;
-    color: white;
-    font-weight: bold;
-    padding: 12px;
-    border-radius: 5px 5px 0 0;
-}
-
-.files-header span {
-    flex: 1;
-    text-align: left;
-}
-
-.files-header span:nth-child(2),
-.files-header span:nth-child(3),
-.files-header span:nth-child(4),
-.files-header span:nth-child(5) {
-    flex: 1;
-}
-
-.files-header span:nth-child(6) {
-    flex: 1;
-    text-align: center;
-}
-
-.file-row {
-    display: flex;
-    background-color: #fff;
-    border-bottom: 1px solid #ddd;
-    padding: 12px;
-    align-items: center;
-}
-
-.file-row span {
-    flex: 1;
-    text-align: left;
-    font-size: 14px;
-}
-
-.file-row span:nth-child(2),
-.file-row span:nth-child(3),
-.file-row span:nth-child(4),
-.file-row span:nth-child(5) {
-    flex: 1;
-    color: #666;
-}
-
-.file-row span:nth-child(6) {
-    flex: 1;
-    text-align: center;
-}
-
-.download-btn {
-    background-color: #ff9500;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 600;
-    transition: background-color 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.download-btn:hover {
-    background-color: #e68a00;
-}
-
-.download-btn i {
-    font-size: 14px;
-}
-
-.file-row:hover {
-    background-color: #f9f9f9;
-}
-
-/* Responsive Styles */
-@media (max-width: 600px) {
-    .files-header, .file-row {
-        display: block;
-        width: 100%;
-    }
-}
-
-</style>
-    </div>
     <script src="../../js/script.js"></script>
 </body>
 </html>
