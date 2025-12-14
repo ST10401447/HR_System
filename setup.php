@@ -40,61 +40,51 @@ try {
     // ---------------------
     $tables = [
         $db1 => [
-
-            // USERS (MODERNISED)
             "users" => "
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255),
-                email VARCHAR(255) UNIQUE,
-                employee_id INT,
-                password VARCHAR(255),
-                department VARCHAR(255),
-                role VARCHAR(255),
-                profile_picture VARCHAR(255),
-                company_id VARCHAR(255),
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    employee_id VARCHAR(50) UNIQUE,
+    password VARCHAR(255),
+    department VARCHAR(255),
+    role VARCHAR(255),
+    profile_picture VARCHAR(255),
+    title VARCHAR(255),
+    dob DATE,
+    nationality VARCHAR(255),
+    gender VARCHAR(255),
+    race VARCHAR(255),
+    mobile VARCHAR(20),
+    address TEXT,
+    city VARCHAR(255),
+    country VARCHAR(255),
+    bio TEXT,
+    theme VARCHAR(20) DEFAULT 'light',
+    profile_status VARCHAR(50) DEFAULT 'incomplete',
+    start_date DATE,
+    emergency_name VARCHAR(255),
+    emergency_number VARCHAR(20),
+    last_login TIMESTAMP NULL,
+    login_attempts INT DEFAULT 0,
+    locked_until TIMESTAMP NULL,
+    account_status ENUM('active','locked','disabled') DEFAULT 'active',
+    password_reset_token VARCHAR(255) NULL,
+    password_reset_expires TIMESTAMP NULL,
+    INDEX(email),
+    INDEX(employee_id)
+",
 
-                -- Modern profile fields
-                title VARCHAR(255),
-                dob DATE,
-                nationality VARCHAR(255),
-                gender VARCHAR(255),
-                race VARCHAR(255),
-                mobile VARCHAR(20),
-                address TEXT,
-                city VARCHAR(255),
-                country VARCHAR(255),
-                bio TEXT,
-                theme VARCHAR(20) DEFAULT 'light',
-                profile_status VARCHAR(50) DEFAULT 'incomplete',
 
-                -- Employment
-                start_date DATE,
 
-                -- Emergency
-                emergency_name VARCHAR(255),
-                emergency_number VARCHAR(20),
-
-                -- Secure Login Fields
-                last_login TIMESTAMP NULL,
-                login_attempts INT DEFAULT 0,
-                locked_until TIMESTAMP NULL,
-                account_status ENUM('active','locked','disabled') DEFAULT 'active',
-                password_reset_token VARCHAR(255) NULL,
-                password_reset_expires TIMESTAMP NULL,
-
-                INDEX(email),
-                INDEX(employee_id)
-            ",
-
-            // PENDING REGISTRATION (MODERNISED)
+       // PENDING REGISTRATION (MODERNISED)
             "pending_registrations" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255),
                 email VARCHAR(255),
+                employee_id VARCHAR(50),
                 phone VARCHAR(20),
                 password VARCHAR(255),
                 department VARCHAR(255),
-                company_id VARCHAR(255),
                 request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 status ENUM('pending','approved','rejected') DEFAULT 'pending',
                 admin_notes TEXT,
@@ -108,7 +98,7 @@ try {
             // TIME OFF
             "timeoff" => "
                 timeoff_id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 leave_type VARCHAR(255),
                 start_date DATE,
                 end_date DATE,
@@ -119,7 +109,7 @@ try {
             // LEAVE BALANCE
             "leave_balance" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 study INT,
                 sick INT,
                 maternity INT,
@@ -133,7 +123,7 @@ try {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 task_name VARCHAR(255),
                 assigned_to VARCHAR(255),
-                employee_id INT,
+                employee_id VARCHAR(50),
                 task_date DATE,
                 manager VARCHAR(255),
                 status VARCHAR(255)
@@ -151,7 +141,7 @@ try {
             // DOCUMENTS
             "documents" => "
                 document_id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 document_name VARCHAR(255),
                 document_original_name VARCHAR(255),
                 document_type VARCHAR(100)
@@ -175,7 +165,7 @@ try {
             // FEEDBACK
             "feedback" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 target_employee_id INT,
                 feedback_text TEXT,
                 submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -184,7 +174,7 @@ try {
             // LEAVE REQUESTS
             "leave_requests" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 leave_type VARCHAR(255),
                 days_requested INT,
                 status VARCHAR(255),
@@ -194,7 +184,7 @@ try {
             // VOTES
             "votes" => "
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                employee_id INT,
+                employee_id VARCHAR(50),
                 vote_id INT,
                 vote_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ",
@@ -202,7 +192,7 @@ try {
             //Employee Docs
             "employee_documents" => "
     id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_id INT NOT NULL,
+    employee_id VARCHAR(50) NOT NULL,
     doc_type VARCHAR(50) NOT NULL,
     filename VARCHAR(255) NOT NULL,
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -212,7 +202,7 @@ try {
             // UPLOADED DOCUMENTS
             "uploaded_documents" => "
     id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_id INT NOT NULL,
+    employee_id VARCHAR(50) NOT NULL,
     task_id INT,
     document_name VARCHAR(255) NOT NULL,
     document_path VARCHAR(255) NOT NULL,
@@ -265,42 +255,38 @@ try {
         [
             'name' => 'Prince',
             'email' => 'prince@thetechgiants.co.za',
-            'employee_id' => '1111',
-            'password' => password_hash('0000', PASSWORD_BCRYPT),
+            'employee_id' => 'TTG-AD-2025-06',
+            'password' => password_hash('Password@06', PASSWORD_BCRYPT),
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-AD-2025'
         ],
         [
             'name' => 'Samson',
             'email' => 'samson@thetechgiants.co.za',
-            'employee_id' => '1112',
-            'password' => password_hash('1010', PASSWORD_BCRYPT),
+            'employee_id' => 'TTG-AD-2025-03',
+            'password' => password_hash('Password@03', PASSWORD_BCRYPT),
             'department' => 'IT',
             'role' => 'Admin',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
         ],
          [
             'name' => 'HR Manager',
             'email' => 'HR@thetechgiants.co.za',
-            'employee_id' => '1113',
-            'password' => password_hash('1012', PASSWORD_BCRYPT),
+            'employee_id' => 'TTG-HR-2025-001',
+            'password' => password_hash('Password@001', PASSWORD_BCRYPT),
             'department' => 'HR Team',
             'role' => 'HR',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
          ],
          [
             'name' => 'Management Team',
             'email' => 'management@thetechgiants.co.za',
-            'employee_id' => '1114',
-            'password' => password_hash('1013', PASSWORD_BCRYPT),
+            'employee_id' => 'TTG-MG-2025-1013',
+            'password' => password_hash('Password@1013', PASSWORD_BCRYPT),
             'department' => 'Management',
             'role' => 'Manager',
             'profile_picture' => '../../resources/UserIcon.jpg',
-            'company_id' => 'TTG-IT-2025'
         ]
     ];
 
@@ -310,11 +296,11 @@ try {
 
         if ($stmt->fetchColumn() == 0) {
             $sql = "
-                INSERT INTO users 
-                (name, email, employee_id, password, department, role, profile_picture, company_id)
-                VALUES 
-                (:name, :email, :employee_id, :password, :department, :role, :profile_picture, :company_id)
-            ";
+    INSERT INTO users 
+    (name, email, employee_id, password, department, role, profile_picture)
+    VALUES 
+    (:name, :email, :employee_id, :password, :department, :role, :profile_picture)
+";
             $stmtInsert = $conn->prepare($sql);
             $stmtInsert->execute($user);
         }
@@ -327,3 +313,4 @@ try {
     echo "❌ Error: " . $e->getMessage();
 }
 ?>
+// //

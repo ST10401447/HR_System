@@ -39,6 +39,16 @@
     // Fetch employees
     $result = $conn->query("SELECT * FROM users");
     $employees = $result->fetch_all(MYSQLI_ASSOC);
+
+    // Fetch documents (filtered when employee selected)
+$documents = [];
+
+if (isset($_GET['employee_id'])) {
+    $emp_id = intval($_GET['employee_id']);
+    $docQuery = $conn->query("SELECT * FROM documents WHERE employee_id = $emp_id ORDER BY uploaded_at DESC");
+    $documents = $docQuery->fetch_all(MYSQLI_ASSOC);
+}
+
 ?>
 
 
@@ -408,8 +418,10 @@ html, body {
         display: block !important;
     }
 }
+
+
 </style>
-<!-- <script>
+ <script>
     document.addEventListener("DOMContentLoaded", function() {
         const hamburger = document.querySelector(".hamburger");
         const sidebar = document.querySelector(".sidebar");
@@ -418,7 +430,13 @@ html, body {
             sidebar.classList.toggle("active");
         });
     });
-</script> -->
+
+    document.getElementById("employeeDropdown").addEventListener("change", function() {
+    const id = this.value;
+    window.location.href = "view_employee_profiles.php?employee_id=" + id;
+});
+
+</script>
 
   <div class="layout">
 
@@ -448,6 +466,7 @@ html, body {
             <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
             <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
+            <a href="employee_documents.php"><i class="fas fa-folder-open"></i><span>Employee Documents</span></a>
             <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
         </nav>
     </aside>
@@ -547,6 +566,9 @@ html, body {
 
                     <button type="submit" class="save-button">Save</button>
                 </form>
+
+
+
 
                 <?php if (!empty($message)) : ?>
                     <p class="success-message"><?php echo $message; ?></p>
