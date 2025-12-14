@@ -5,6 +5,20 @@
 
     try {
         $employee_id = $_SESSION['employee_id'];
+        
+        // Fetch employee details from users table
+        $stmt = $conn->prepare("SELECT name, email, profile_picture FROM users WHERE employee_id = :employee_id");
+        $stmt->execute(['employee_id' => $employee_id]);
+        $employee = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($employee) {
+            $user_name = $employee['name'];
+            $profile_picture = !empty($employee['profile_picture']) ? $employee['profile_picture'] : '../../resources/default-avatar.png';
+        } else {
+            $user_name = "Employee";
+            $profile_picture = '../../resources/default-avatar.png';
+        }
+        
         $stmt = $conn->prepare("SELECT * FROM tasks WHERE employee_id = :employee_id");
         $stmt->execute(['employee_id' => $employee_id]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
