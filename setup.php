@@ -310,7 +310,7 @@ try {
     echo "<p style='text-align: center; margin-top: 20px;'><a href='pages/login.php' style='font-size: 18px; text-decoration: none; color: #ff9500;'>Go to Login Page</a></p>";
 
 } catch (PDOException $e) {
-    echo "❌ Error: " . $e->getMessage();
+    // Log errors silently to a file; do not output anything to the browser
+    @file_put_contents(__DIR__ . '/setup_errors.log', '[' . date('c') . '] ' . $e->getMessage() . PHP_EOL, FILE_APPEND);
 }
 ?>
-// //
