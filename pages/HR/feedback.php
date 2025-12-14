@@ -77,7 +77,8 @@ if ($winner_id) {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            /* make page background clear/transparent so underlying site background shows */
+            
         }
 
         /* Sidebar styles */
@@ -118,7 +119,6 @@ if ($winner_id) {
         }
 
         th {
-            background-color: #ff9500;
             color: white;
             font-weight: bold;
         }
@@ -127,9 +127,6 @@ if ($winner_id) {
             background-color: #f2f2f2;
         }
 
-        tr:hover {
-            background-color: #ddd;
-        }
 
         /* Hamburger menu button styles */
         .hamburger {
@@ -537,6 +534,8 @@ html, body {
 .feedback-container {
     margin-left: 350px;  /* same width as sidebar */
     padding: 20px;
+    background: white;
+    background-image: none !important;
 }
 
 </style>
@@ -579,6 +578,7 @@ html, body {
             <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
             <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
             <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
+            <a href="employee_documents.php"><i class="fas fa-folder-open"></i><span>Employee Documents</span></a>
             <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
         </nav>
     </aside>

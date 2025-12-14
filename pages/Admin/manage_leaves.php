@@ -14,97 +14,71 @@
         die("Connection failed: " . $conn->connect_error);
     }
 
-    // Handle delete
-    if (isset($_POST['delete_id'])) {
-        $delete_id = $_POST['delete_id'];
-        // capture task name for logging
-        $res = $conn->query("SELECT task_name FROM tasks WHERE id=$delete_id");
-        $task_row = $res ? $res->fetch_assoc() : null;
-        $task_name_del = $task_row ? $task_row['task_name'] : 'N/A';
-        $conn->query("DELETE FROM tasks WHERE id=$delete_id");
-        // ensure activities table exists and log deletion
-        $conn->query("CREATE TABLE IF NOT EXISTS activities (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            employee_id INT,
-            activity_type VARCHAR(100),
-            description TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $desc = "Task deleted: $task_name_del (ID: $delete_id)";
-        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
-        if ($stmt) {
-            $activity_type = 'Task Deleted';
-            $user_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
-            $stmt->bind_param('iss', $user_id, $activity_type, $desc);
-            $stmt->execute();
-            $stmt->close();
-        }
+    // Handle reject
+    if (isset($_POST['reject_id'])) {
+        $timeoff_id = $_POST['reject_id'];
+        $conn->query("UPDATE timeoff SET status='Rejected' WHERE timeoff_id=$timeoff_id");
     }
 
-    // Handle edit
-    if (isset($_POST['edit_id'])) {
-        $edit_id = $_POST['edit_id'];
-        $task_name = $_POST['task_name'];
-        $assigned_to = $_POST['assigned_to'];
-        $assigned_to_id = $_POST['employee_id'];
-        $date = $_POST['date'];
-        $status = $_POST['status'];
-        $conn->query("UPDATE tasks SET task_name='$task_name', assigned_to='$assigned_to', employee_id='$assigned_to_id', task_date='$date', manager='$user_name', status='$status' WHERE id=$edit_id");
-        $confirmation_message = "Task updated successfully!";
-        // ensure activities table exists and log update
-        $conn->query("CREATE TABLE IF NOT EXISTS activities (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            employee_id INT,
-            activity_type VARCHAR(100),
-            description TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $desc = "Task updated: $task_name (ID: $edit_id) assigned to $assigned_to (ID: $assigned_to_id)";
-        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
-        if ($stmt) {
-            $activity_type = 'Task Updated';
-            $user_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
-            $stmt->bind_param('iss', $user_id, $activity_type, $desc);
-            $stmt->execute();
-            $stmt->close();
+    // Handle approve
+    if (isset($_POST['approve_id'])) {
+    $timeoff_id = $_POST['approve_id'];
+
+    // 1. Get full leave info
+    $sql = "SELECT * FROM timeoff WHERE timeoff_id = $timeoff_id";
+    $result = $conn->query($sql);
+    $leave = $result->fetch_assoc();
+
+    $employee_id = $leave['employee_id'];
+    $leave_type = $leave['leave_type'];
+    $start_date = $leave['start_date'];
+    $end_date = $leave['end_date'];
+
+    // 2. Calculate the number of days
+    $days = (strtotime($end_date) - strtotime($start_date)) / 86400 + 1;
+
+    // 3. Update timeoff status
+    $conn->query("UPDATE timeoff SET status='Approved' WHERE timeoff_id=$timeoff_id");
+
+    // 4. Insert into leave_requests table
+    $stmt = $conn->prepare("
+        INSERT INTO leave_requests (employee_id, leave_type, days_requested, status)
+        VALUES (?, ?, ?, 'approved')
+    ");
+    $stmt->bind_param("isi", $employee_id, $leave_type, $days);
+    $stmt->execute();
+
+    // 5. Update leave_balance (subtract used days)
+    $conn->query("
+        UPDATE leave_balance 
+        SET $leave_type = $leave_type - $days 
+        WHERE employee_id = $employee_id
+    ");
+}
+
+
+    function getEmployeesArray($conn) {
+        $employees = [];
+    
+        $query = "SELECT employee_id, name FROM users";
+        $result = $conn->query($query);
+    
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $employees[$row['employee_id']] = $row['name'];
+            }
         }
+    
+        return $employees;
     }
 
-    // Handle create
-    if (isset($_POST['create_task'])) {
-        $task_name = $_POST['task_name'];
-        $assigned_to = $_POST['assigned_to'];
-        $assigned_to_id = $_POST['employee_id'];
-        $date = $_POST['date'];
-        $status = $_POST['status'];
-        $conn->query("INSERT INTO tasks (task_name, assigned_to, employee_id, task_date, manager, status) VALUES ('$task_name', '$assigned_to', '$assigned_to_id', '$date', '$user_name', '$status')");
-        $confirmation_message = "New task created successfully!";
-        // ensure activities table exists and log creation
-        $conn->query("CREATE TABLE IF NOT EXISTS activities (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            employee_id INT,
-            activity_type VARCHAR(100),
-            description TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $desc = "Task created: $task_name assigned to $assigned_to (ID: $assigned_to_id) for $date";
-        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
-        if ($stmt) {
-            $activity_type = 'Task Created';
-            $manager_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
-            $stmt->bind_param('iss', $manager_id, $activity_type, $desc);
-            $stmt->execute();
-            $stmt->close();
-        }
-    }
+    // Usage example
+    $employeesArray = getEmployeesArray($conn);
+    // print_r($employeesArray); // Debugging output
 
-    // Fetch tasks
-    $result = $conn->query("SELECT * FROM tasks");
-    $tasks = $result->fetch_all(MYSQLI_ASSOC);
-
-    // Fetch employees
-    $result = $conn->query("SELECT * FROM users");
-    $employees = $result->fetch_all(MYSQLI_ASSOC);
+    // Fetch leave requests
+    $result = $conn->query("SELECT * FROM timeoff WHERE status='Pending'");
+    $leave_requests = $result->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -117,7 +91,7 @@
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/Manage_Employee_Tasks.css">
     <link rel="stylesheet" href="../../css/modal.css">
-    <title>Manage Employee Tasks</title>
+    <title>Manage Leaves</title>
 </head>
 <body>
 
@@ -485,7 +459,6 @@ html, body {
         });
     });
 </script> -->
-
 <div class="layout">
 
     <!-- HAMBURGER & OVERLAY -->
@@ -507,49 +480,52 @@ html, body {
         </div>
 
         <nav class="nav-links">
-            <a href="dashboard.php" class="active"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span> Employee Tasks</span></a>
-            <a href="manage_leaves.php"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
-            <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>Employee Profiles</span></a>
-            <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
-            <a href="feedback.php"><i class="fas fa-comment-dots"></i><span>Feedback</span></a>
-            <a href="view_report.php"><i class="fas fa-calendar-check"></i><span>View Report</span></a>
-            <a href="employee_documents.php"><i class="fas fa-folder-open"></i><span>Employee Documents</span></a>
-            <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
-        </nav>
+                <a href="dashboard.php"><i class="fas fa-home"></i><span>Dashboard</span></a>
+                <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
+                <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>View Employee Profiles</span></a>
+                <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
+                <a href="admin_approve_registrations.php"><i class="fas fa-user-check"></i><span>Approve Registrations</span></a>
+                <a href="../Employee/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Employee</span></a>
+                <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </nav>
     </aside>
 
 
         <!-- Main Content -->
         <div class="main-content">
-            <h1>Manage Employee Tasks</h1>
+            <h1>Manage Leaves</h1>
             <section class="task-table">
-                <h2>Assigning of tasks</h2>
+                <h2>Approve/Reject leave</h2>
                 <div class="tabular--wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Task Name</th>
-                                <th>Assigned to</th>
-                                <th>Date</th>
+                                <th>Employee Name</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
                                 <th>Status</th>
+                                <th>Reason</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($tasks as $task): ?>
+                            <?php foreach ($leave_requests as $leave_request): ?>
                                 <tr>
-                                    <td><?= $task['id'] ?></td>
-                                    <td><?= $task['task_name'] ?></td>
-                                    <td><?= $task['assigned_to'] ?></td>
-                                    <td><?= $task['task_date'] ?></td>
-                                    <td class="status <?= strtolower($task['status']) ?>"><?= $task['status'] ?></td>
+                                    <td><?= $employeesArray[$leave_request['employee_id']] ?></td>
+                                    <td><?= $leave_request['leave_type'] ?></td>
+                                    <td><?= $leave_request['start_date'] ?></td>
+                                    <td><?= $leave_request['end_date'] ?></td>
+                                    <td><?= $leave_request['reason'] ?></td>
+                                    <td class="status <?= strtolower($leave_request['status']) ?>"><?= $leave_request['status'] ?></td>
                                     <td>
-                                        <button class="btn btn-edit" onclick="openEditModal(<?= $task['id'] ?>, '<?= $task['task_name'] ?>', '<?= $task['assigned_to'] ?>', '<?= $task['employee_id'] ?>', '<?= $task['task_date'] ?>', '<?= $task['status'] ?>')">Edit</button>
                                         <form method="POST" style="display:inline;">
-                                            <input type="hidden" name="delete_id" value="<?= $task['id'] ?>">
-                                            <button type="submit" class="btn btn-delete">Delete</button>
+                                            <input type="hidden" name="reject_id" value="<?= $leave_request['timeoff_id'] ?>">
+                                            <button type="submit" class="btn btn-delete">Reject</button>
+                                        </form>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="approve_id" value="<?= $leave_request['timeoff_id'] ?>">
+                                            <button type="submit" class="btn btn-approve">Approve</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -558,8 +534,6 @@ html, body {
                     </table>
                 </div>
 
-                <!-- Button to create new task -->
-                <button class="create-task-btn" onclick="openModal()">+ Create Task</button>
             </section>
 
             <!-- Confirmation Message -->
@@ -569,85 +543,9 @@ html, body {
                 </div>
             <?php endif; ?>
         </div>
-
-        <!-- Modal for Create Task Form -->
-        <div class="modal" id="createTaskModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Create New Task</h2>
-                    <button class="modal-close" onclick="closeModal()">&times;</button>
-                </div>
-                <form method="POST">
-                    <input type="hidden" name="create_task" value="1">
-                    <input type="text" name="task_name" placeholder="Task Name" required>
-                    <select name="assigned_to" id="assigned_to_create" required>
-                        <option value="">Assign to</option>
-                        <?php foreach ($employees as $employee): ?>
-                            <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <!-- Hidden input to store employee_id -->
-                    <input type="hidden" name="employee_id" id="employee_id_hidden">
-
-                    <input type="date" name="date" required>
-                    <select name="status" required>
-                        <option value="">Select Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Incomplete">Incomplete</option>
-                    </select>
-                    <button type="submit">Save Task</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Modal for Edit Task Form -->
-        <div class="modal" id="editTaskModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Edit Task</h2>
-                    <button class="modal-close" onclick="closeEditModal()">&times;</button>
-                </div>
-                <form method="POST">
-                    <input type="hidden" name="edit_id" id="edit_id">
-                    <input type="text" name="task_name" id="edit_task_name" placeholder="Task Name" required>
-                    <select name="assigned_to" id="edit_assigned_to" required>
-                        <option value="">Assign to</option>
-                        <?php foreach ($employees as $employee): ?>
-                            <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <!-- Hidden input to store employee_id -->
-                    <input type="hidden" name="employee_id" id="employee_id_hidden_edit">
-
-                    <input type="date" name="date" id="edit_date" required>
-                    <select name="status" id="edit_status" required>
-                        <option value="">Select Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Incomplete">Incomplete</option>
-                    </select>
-                    <button type="submit">Update Task</button>
-                    <!-- <div class="confirmation-message" style="display:show"></div> -->
-                </form>
-            </div>
-        </div>
+        
     </div>
 
-
-    <style>
-
-body {
-  margin-top: 0px;
-  text-align: center;
-  font-size: 17.5px;
-  font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
-
-}
-
-</style>
 
     <script src="../../js/manage_employee_tasks.js"></script>
     <script src="../../js/script.js"></script>

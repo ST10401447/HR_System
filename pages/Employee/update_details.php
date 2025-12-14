@@ -1,5 +1,11 @@
 PHP<?php
     include 'confirm_employee.php';
+$employee_id = $_SESSION['employee_id'] ?? null;
+
+if (!$employee_id) {
+    die("Error: Employee ID not found in session.");
+}
+
     
     // Database connection variables
     $host = "localhost";
@@ -65,7 +71,7 @@ if (isset($_POST['upload_document'])) {
                     VALUES (?, ?, ?, NOW()) 
                     ON DUPLICATE KEY UPDATE filename = VALUES(filename), upload_date = NOW()
                 ");
-                $stmt->bind_param("iss", $employee_id, $doc_type, $filename);
+                $stmt->bind_param("sss", $employee_id, $doc_type, $filename);
                 $stmt->execute();
                 $upload_message = "<div class='success-message'>✓ $document_types[$doc_type] uploaded successfully!</div>";
             } else {
@@ -77,9 +83,24 @@ if (isset($_POST['upload_document'])) {
     }
 }
     // Fetch employees
-    $result = $conn->query("SELECT * FROM users WHERE employee_id=$employee_id");
-    $employee_pre = $result->fetch_all(MYSQLI_ASSOC);
-    $employee = $employee_pre[0];
+  $stmt = $conn->prepare("SELECT * FROM users WHERE employee_id = ?");
+$stmt->bind_param("s", $employee_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+
+if (!$result) {
+    die("SQL Error: " . $conn->error);
+}
+
+$employee_pre = $result->fetch_all(MYSQLI_ASSOC);
+
+if (empty($employee_pre)) {
+    die("Error: Employee not found.");
+}
+
+$employee = $employee_pre[0];
+
 
     $docs = [];
 $doc_query = $conn->prepare("
@@ -87,7 +108,7 @@ $doc_query = $conn->prepare("
     FROM employee_documents 
     WHERE employee_id = ?
 ");
-$doc_query->bind_param("i", $employee_id);
+$doc_query->bind_param("s", $employee_id);
 $doc_query->execute();
 $result_docs = $doc_query->get_result();
 

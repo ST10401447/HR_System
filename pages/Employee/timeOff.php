@@ -1,6 +1,6 @@
 <?php
 include 'confirm_employee.php';
-$display = $_SESSION['switch_button'];
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $leave_type = $_POST["leave_type"] ?? '';
@@ -35,6 +35,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $message = "Request Successfully Submitted";
     } else {
         $message = "Error saving record: " . mysqli_stmt_error($stmt);
+    }
+
+    // Log activity: try to insert into `activities` table if it exists or create it
+    $activity_conn = $conn; // mysqli connection
+    // Create activities table if missing
+    $create_sql = "CREATE TABLE IF NOT EXISTS activities (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        employee_id INT,
+        activity_type VARCHAR(100),
+        description TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )";
+    $activity_conn->query($create_sql);
+
+    // Insert activity record
+    $employee_id_session = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
+    $description = "Leave request: $leave_type from $start_date to $end_date. Reason: $reason";
+    if ($employee_id_session) {
+        $ins = $activity_conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
+        if ($ins) {
+            $type = 'Leave Request';
+            $ins->bind_param('iss', $employee_id_session, $type, $description);
+            $ins->execute();
+            $ins->close();
+        }
     }
 
     // Close the prepared statement and the database connection
