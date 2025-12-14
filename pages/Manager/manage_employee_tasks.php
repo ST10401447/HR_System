@@ -17,7 +17,28 @@
     // Handle delete
     if (isset($_POST['delete_id'])) {
         $delete_id = $_POST['delete_id'];
+        // capture task name for logging
+        $res = $conn->query("SELECT task_name FROM tasks WHERE id=$delete_id");
+        $task_row = $res ? $res->fetch_assoc() : null;
+        $task_name_del = $task_row ? $task_row['task_name'] : 'N/A';
         $conn->query("DELETE FROM tasks WHERE id=$delete_id");
+        // ensure activities table exists and log deletion
+        $conn->query("CREATE TABLE IF NOT EXISTS activities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT,
+            activity_type VARCHAR(100),
+            description TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $desc = "Task deleted: $task_name_del (ID: $delete_id)";
+        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
+        if ($stmt) {
+            $activity_type = 'Task Deleted';
+            $user_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
+            $stmt->bind_param('iss', $user_id, $activity_type, $desc);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     // Handle edit
@@ -28,8 +49,26 @@
         $assigned_to_id = $_POST['employee_id'];
         $date = $_POST['date'];
         $status = $_POST['status'];
-        $conn->query("UPDATE tasks SET task_name='$task_name', assigned_to='$assigned_to', employee_id='$assigned_to_id', task_date='$date', manager='$user_name' status='$status' WHERE id=$edit_id");
+        // fix: add missing comma between manager and status
+        $conn->query("UPDATE tasks SET task_name='$task_name', assigned_to='$assigned_to', employee_id='$assigned_to_id', task_date='$date', manager='$user_name', status='$status' WHERE id=$edit_id");
         $confirmation_message = "Task updated successfully!";
+        // ensure activities table exists and log update
+        $conn->query("CREATE TABLE IF NOT EXISTS activities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT,
+            activity_type VARCHAR(100),
+            description TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $desc = "Task updated: $task_name (ID: $edit_id) assigned to $assigned_to (ID: $assigned_to_id)";
+        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
+        if ($stmt) {
+            $activity_type = 'Task Updated';
+            $user_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
+            $stmt->bind_param('iss', $user_id, $activity_type, $desc);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     // Handle create
@@ -41,6 +80,23 @@
         $status = $_POST['status'];
         $conn->query("INSERT INTO tasks (task_name, assigned_to, employee_id, task_date, manager, status) VALUES ('$task_name', '$assigned_to', '$assigned_to_id', '$date', '$user_name', '$status')");
         $confirmation_message = "New task created successfully!";
+        // ensure activities table exists and log creation
+        $conn->query("CREATE TABLE IF NOT EXISTS activities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT,
+            activity_type VARCHAR(100),
+            description TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $desc = "Task created: $task_name assigned to $assigned_to (ID: $assigned_to_id) for $date";
+        $stmt = $conn->prepare("INSERT INTO activities (employee_id, activity_type, description) VALUES (?, ?, ?)");
+        if ($stmt) {
+            $activity_type = 'Task Created';
+            $manager_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : null;
+            $stmt->bind_param('iss', $manager_id, $activity_type, $desc);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     // Fetch tasks

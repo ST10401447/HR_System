@@ -119,8 +119,7 @@ if ($winner_id) {
         }
 
         th {
-            
-            color: white; 
+            color: white;
             font-weight: bold;
         }
 
@@ -128,7 +127,6 @@ if ($winner_id) {
             background-color: #f2f2f2;
         }
 
-        
 
         /* Hamburger menu button styles */
         .hamburger {
@@ -536,6 +534,8 @@ html, body {
 .feedback-container {
     margin-left: 350px;  /* same width as sidebar */
     padding: 20px;
+    background: white;
+    background-image: none !important;
 }
 
 </style>

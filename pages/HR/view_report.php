@@ -65,14 +65,20 @@ if ($report_type) {
         echo "Error fetching leaves: " . $conn->error;
     }
 
-    // Fetch activities
-    $activity_sql = "SELECT * FROM activities WHERE timestamp BETWEEN '$start_date' AND '$end_date' ORDER BY timestamp DESC";
-    if ($result = $conn->query($activity_sql)) {
-        while ($row = $result->fetch_assoc()) {
-            $activities[] = $row;
+    // Fetch activities if the table exists
+    $table_check = $conn->query("SHOW TABLES LIKE 'activities'");
+    if ($table_check && $table_check->num_rows > 0) {
+        $activity_sql = "SELECT * FROM activities WHERE timestamp BETWEEN '$start_date' AND '$end_date' ORDER BY timestamp DESC";
+        if ($result = $conn->query($activity_sql)) {
+            while ($row = $result->fetch_assoc()) {
+                $activities[] = $row;
+            }
+        } else {
+            echo "Error fetching activities: " . $conn->error;
         }
     } else {
-        echo "Error fetching activities: " . $conn->error;
+        // activities table does not exist in this database — skip activities gracefully
+        $activities = [];
     }
 }
 
@@ -240,11 +246,14 @@ if ($result = $conn->query("SELECT DISTINCT YEAR(start_date) as year FROM timeof
     }
 }
 
-// Try to get years from activities
-if ($result = $conn->query("SELECT DISTINCT YEAR(timestamp) as year FROM activities")) {
-    while ($row = $result->fetch_assoc()) {
-        if (!in_array($row['year'], $years)) {
-            $years[] = $row['year'];
+// Try to get years from activities (only if table exists)
+$table_check = $conn->query("SHOW TABLES LIKE 'activities'");
+if ($table_check && $table_check->num_rows > 0) {
+    if ($result = $conn->query("SELECT DISTINCT YEAR(timestamp) as year FROM activities")) {
+        while ($row = $result->fetch_assoc()) {
+            if (!in_array($row['year'], $years)) {
+                $years[] = $row['year'];
+            }
         }
     }
 }
