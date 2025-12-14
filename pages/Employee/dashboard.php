@@ -722,7 +722,7 @@ try {
                                                     <th>Task Name</th>
                                                     <th>Due Date</th>
                                                     <th>Status</th>
-                                                    <th>Start Date</th>
+                                                    <th>Assigned task to:</th>
                                                     <th></th> <!-- New column for the View button -->
                                                 </tr>
                                             </thead>
