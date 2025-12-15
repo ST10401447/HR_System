@@ -127,20 +127,20 @@
         $confirmation_message = "New task created successfully with " . (isset($_FILES['task_files']) ? count(array_filter($_FILES['task_files']['name'])) : 0) . " file(s) uploaded!";
     }
 
-    // Fetch tasks (oldest first)
-    $result = $conn->query("SELECT * FROM tasks ORDER BY task_date ASC");
+    // Fetch tasks (FIRST CREATED AT TOP - by ID ascending)
+    $result = $conn->query("SELECT * FROM tasks ORDER BY id ASC");
     $tasks = $result->fetch_all(MYSQLI_ASSOC);
 
     // Fetch employees
     $result = $conn->query("SELECT * FROM users WHERE role IN ('Employee', 'Manager', 'Admin')");
     $employees = $result->fetch_all(MYSQLI_ASSOC);
 
-    // Fetch employee submitted documents with employee names (oldest first)
+    // Fetch employee submitted documents (FIRST SUBMITTED AT TOP - by ID ascending)
     $result = $conn->query("
         SELECT ud.*, u.name as employee_name, u.employee_id 
         FROM uploaded_documents ud
         JOIN users u ON ud.employee_id = u.employee_id
-        ORDER BY ud.uploaded_at ASC
+        ORDER BY ud.id ASC
     ");
     $employee_submissions = $result->fetch_all(MYSQLI_ASSOC);
 ?>
@@ -502,251 +502,245 @@
         background: #e68600;
     }
 </style>
-
 <div class="layout">
 
-<div class="hamburger" id="hamburger">
-    <i class="fas fa-bars"></i>
-</div>
+    <!-- HAMBURGER & OVERLAY -->
+    <div class="hamburger" id="hamburger"><i class="fas fa-bars"></i></div>
+    <div class="overlay" id="overlay"></div>
 
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-inner">
-
-            <div class="profile-section">
-                <div class="profile-image">
-                    <img src="<?php echo htmlspecialchars($profile_picture); ?>" id="profilePic">
-                    <input type="file" id="imageUpload" hidden accept="image/*" onchange="updateProfilePic()">
-                </div>
-
-                <p class="profile-name"><?php echo htmlspecialchars($user_name); ?> - Admin</p>
-
-                <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
-                    Change Picture
-                </button>
+        <div class="profile-section">
+            <div class="profile-image">
+                <img src="<?php echo htmlspecialchars($profile_picture ?? '../../resources/default-avatar.png'); ?>" 
+                     id="profilePic" alt="Profile">
             </div>
-
-            <nav class="nav-links">
-                <a href="dashboard.php"><i class="fas fa-home"></i><span>Dashboard</span></a>
-                <a href="manage_employee_tasks.php"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
-                <a href="view_employee_profiles.php"><i class="fas fa-users"></i><span>View Employee Profiles</span></a>
-                <a href="manage_employees.php"><i class="fas fa-users-cog"></i><span>Manage Employees</span></a>
-                <a href="admin_approve_registrations.php"><i class="fas fa-user-check"></i><span>Approve Registrations</span></a>
-                <a href="../Employee/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Employee</span></a>
-                <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-            </nav>
-
+            <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+            <button class="profile-btn" onclick="document.getElementById('imageUpload').click()">
+                Change Picture
+            </button>
+            <input type="file" id="imageUpload" hidden accept="image/*">
         </div>
+
+        <nav class="nav-links">
+            <a href="dashboard.php"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a href="manage_employee_tasks.php" class="active"><i class="fas fa-tasks"></i><span>Manage Employee Tasks</span></a>
+            <a href="manage_leaves.php"><i class="fas fa-calendar-alt"></i><span>Manage Leaves</span></a>
+            <a href="update_details.php"><i class="fas fa-user"></i><span>Update Details</span></a>
+            <a href="../Employee/dashboard.php"><i class="fas fa-exchange-alt"></i><span>Switch to Employee</span></a>
+            <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a>
+        </nav>
     </aside>
 
-        <div class="main-content">
-            <h1>Manage Employee Tasks</h1>
+    <div class="main-content">
+        <h1>Manage Employee Tasks</h1>
 
-            <?php if (isset($confirmation_message)): ?>
-                <div class="confirmation-message">
-                    <?= $confirmation_message ?>
-                </div>
+        <?php if (isset($confirmation_message)): ?>
+            <div class="confirmation-message">
+                <?= $confirmation_message ?>
+            </div>
+        <?php endif; ?>
+
+        <section class="task-table">
+            <h2>Assigning of tasks</h2>
+            <div class="tabular--wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Task Name</th>
+                            <th>Assigned to</th>
+                            <th>Date</th>
+                            <th>Documents</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($tasks as $task): ?>
+                            <?php
+                                // Fetch ALL documents for this task
+                                $doc_stmt = $conn->query("SELECT id, file_name FROM task_files WHERE task_id = {$task['id']}");
+                                $documents = $doc_stmt->fetch_all(MYSQLI_ASSOC);
+                            ?>
+                            <tr>
+                                <td><?= $task['id'] ?></td>
+                                <td><?= $task['task_name'] ?></td>
+                                <td><?= $task['assigned_to'] ?></td>
+                                <td><?= $task['task_date'] ?></td>
+                                <td>
+                                    <?php if (count($documents) > 0): ?>
+                                        <?php foreach ($documents as $doc): ?>
+                                            <a href="manage_employee_tasks.php?view_file=<?= $doc['id'] ?>" class="doc-link" title="Click to download">
+                                                <i class="fas fa-file-download"></i> <?= $doc['file_name'] ?>
+                                            </a><br>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        N/A
+                                    <?php endif; ?>
+                                </td>
+                                <td class="status <?= strtolower($task['status']) ?>"><?= $task['status'] ?></td>
+                                <td>
+                                    <button class="btn btn-edit" onclick="openEditModal(<?= $task['id'] ?>, '<?= addslashes($task['task_name']) ?>', '<?= addslashes($task['assigned_to']) ?>', '<?= $task['employee_id'] ?>', '<?= $task['task_date'] ?>', '<?= $task['status'] ?>')">Edit</button>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="delete_id" value="<?= $task['id'] ?>">
+                                        <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this task and all its files?')">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <button class="create-task-btn" onclick="openModal()">+ Create Task</button>
+        </section>
+
+        <!-- Employee Submissions Section -->
+        <section class="employee-submissions-section">
+            <h2>Employee Document Submissions</h2>
+            <?php if (count($employee_submissions) > 0): ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Employee Name</th>
+                            <th>Employee ID</th>
+                            <th>Document Name</th>
+                            <th>Submitted Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($employee_submissions as $submission): ?>
+                            <tr>
+                                <td><?= $submission['id'] ?></td>
+                                <td><?= htmlspecialchars($submission['employee_name']) ?></td>
+                                <td><?= htmlspecialchars($submission['employee_id']) ?></td>
+                                <td><?= htmlspecialchars($submission['document_name']) ?></td>
+                                <td><?= date('M d, Y - h:i A', strtotime($submission['uploaded_at'])) ?></td>
+                                <td class="status <?= strtolower($submission['status']) ?>"><?= $submission['status'] ?></td>
+                                <td>
+                                    <a href="manage_employee_tasks.php?download_employee_doc=<?= $submission['id'] ?>" class="download-btn">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p style="text-align: center; color: #999; padding: 20px;">No employee submissions yet.</p>
             <?php endif; ?>
+        </section>
+    </div>
 
-            <section class="task-table">
-                <h2>Assigning of tasks</h2>
-                <div class="tabular--wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Task Name</th>
-                                <th>Assigned to</th>
-                                <th>Date</th>
-                                <th>Documents</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($tasks as $task): ?>
-                                <?php
-                                    // Fetch ALL documents for this task
-                                    $doc_stmt = $conn->query("SELECT id, file_name FROM task_files WHERE task_id = {$task['id']}");
-                                    $documents = $doc_stmt->fetch_all(MYSQLI_ASSOC);
-                                ?>
-                                <tr>
-                                    <td><?= $task['id'] ?></td>
-                                    <td><?= $task['task_name'] ?></td>
-                                    <td><?= $task['assigned_to'] ?></td>
-                                    <td><?= $task['task_date'] ?></td>
-                                    <td>
-                                        <?php if (count($documents) > 0): ?>
-                                            <?php foreach ($documents as $doc): ?>
-                                                <a href="manage_employee_tasks.php?view_file=<?= $doc['id'] ?>" class="doc-link" title="Click to download">
-                                                    <i class="fas fa-file-download"></i> <?= $doc['file_name'] ?>
-                                                </a><br>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            N/A
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="status <?= strtolower($task['status']) ?>"><?= $task['status'] ?></td>
-                                    <td>
-                                        <button class="btn btn-edit" onclick="openEditModal(<?= $task['id'] ?>, '<?= $task['task_name'] ?>', '<?= $task['assigned_to'] ?>', '<?= $task['employee_id'] ?>', '<?= $task['task_date'] ?>', '<?= $task['status'] ?>')">Edit</button>
-                                        <form method="POST" style="display:inline;">
-                                            <input type="hidden" name="delete_id" value="<?= $task['id'] ?>">
-                                            <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this task and all its files?')">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-
-                <button class="create-task-btn" onclick="openModal()">+ Create Task</button>
-            </section>
-
-            <!-- Employee Submissions Section -->
-            <section class="employee-submissions-section">
-                <h2>Employee Document Submissions</h2>
-                <?php if (count($employee_submissions) > 0): ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Employee Name</th>
-                                <th>Employee ID</th>
-                                <th>Document Name</th>
-                                <th>Submitted Date</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($employee_submissions as $submission): ?>
-                                <tr>
-                                    <td><?= $submission['id'] ?></td>
-                                    <td><?= htmlspecialchars($submission['employee_name']) ?></td>
-                                    <td><?= htmlspecialchars($submission['employee_id']) ?></td>
-                                    <td><?= htmlspecialchars($submission['document_name']) ?></td>
-                                    <td><?= date('M d, Y - h:i A', strtotime($submission['uploaded_at'])) ?></td>
-                                    <td class="status <?= strtolower($submission['status']) ?>"><?= $submission['status'] ?></td>
-                                    <td>
-                                        <a href="manage_employee_tasks.php?download_employee_doc=<?= $submission['id'] ?>" class="download-btn">
-                                            <i class="fas fa-download"></i> Download
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p style="text-align: center; color: #999; padding: 20px;">No employee submissions yet.</p>
-                <?php endif; ?>
-            </section>
-        </div>
-
-        <!-- Modal for Create Task Form -->
-        <div class="modal" id="createTaskModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Create New Task</h2>
-                    <button class="modal-close" onclick="closeModal()">&times;</button>
-                </div>
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="create_task" value="1">
-                    <input type="text" name="task_name" placeholder="Task Name" required>
-                    <select name="assigned_to" id="assigned_to_create" required>
-                        <option value="">Assign to</option>
-                        <?php foreach ($employees as $employee): ?>
-                            <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <input type="hidden" name="employee_id" id="employee_id_hidden">
-
-                    <input type="date" name="date" required>
-                    <select name="status" required>
-                        <option value="">Select Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Incomplete">Incomplete</option>
-                    </select>
-                    
-                    <!-- MULTIPLE FILE UPLOAD -->
-                    <label for="task_files" style="font-weight: 600; margin-top: 10px; display: block;">Upload Task Files (Optional - Multiple):</label>
-                    <div class="file-upload-area" onclick="document.getElementById('task_files').click()">
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #ff9500;"></i>
-                        <p>Click to upload multiple files</p>
-                        <small style="color: #666;">Accepted: Word, PDF, Images | Max 10MB each</small>
-                    </div>
-                    <input type="file" name="task_files[]" id="task_files" accept=".doc,.docx,.pdf,.jpg,.jpeg,.png" multiple style="display: none;">
-                    <div id="file_list" class="file-list"></div>
-                    
-                    <button type="submit">Save Task</button>
-                </form>
+    <!-- Modal for Create Task Form -->
+    <div class="modal" id="createTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Task</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
-        </div>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="create_task" value="1">
+                <input type="text" name="task_name" placeholder="Task Name" required>
+                <select name="assigned_to" id="assigned_to_create" required>
+                    <option value="">Assign to</option>
+                    <?php foreach ($employees as $employee): ?>
+                        <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-        <!-- Modal for Edit Task Form -->
-        <div class="modal" id="editTaskModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Edit Task</h2>
-                    <button class="modal-close" onclick="closeEditModal()">&times;</button>
+                <input type="hidden" name="employee_id" id="employee_id_hidden">
+
+                <input type="date" name="date" required>
+                <select name="status" required>
+                    <option value="">Select Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Incomplete">Incomplete</option>
+                </select>
+                
+                <!-- MULTIPLE FILE UPLOAD -->
+                <label for="task_files" style="font-weight: 600; margin-top: 10px; display: block;">Upload Task Files (Optional - Multiple):</label>
+                <div class="file-upload-area" onclick="document.getElementById('task_files').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #ff9500;"></i>
+                    <p>Click to upload multiple files</p>
+                    <small style="color: #666;">Accepted: Word, PDF, Images | Max 10MB each</small>
                 </div>
-                <form method="POST">
-                    <input type="hidden" name="edit_id" id="edit_id">
-                    <input type="text" name="task_name" id="edit_task_name" placeholder="Task Name" required>
-                    <select name="assigned_to" id="edit_assigned_to" required>
-                        <option value="">Assign to</option>
-                        <?php foreach ($employees as $employee): ?>
-                            <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <input type="hidden" name="employee_id" id="employee_id_hidden_edit">
-
-                    <input type="date" name="date" id="edit_date" required>
-                    <select name="status" id="edit_status" required>
-                        <option value="">Select Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Incomplete">Incomplete</option>
-                    </select>
-                    <button type="submit">Update Task</button>
-                </form>
-            </div>
+                <input type="file" name="task_files[]" id="task_files" accept=".doc,.docx,.pdf,.jpg,.jpeg,.png" multiple style="display: none;">
+                <div id="file_list" class="file-list"></div>
+                
+                <button type="submit">Save Task</button>
+            </form>
         </div>
     </div>
 
-    <script src="../../js/manage_employee_tasks.js"></script>
-    <script src="../../js/script.js"></script>
-    <script>
-        // Show selected files
-        document.getElementById('task_files').addEventListener('change', function() {
-            const fileList = document.getElementById('file_list');
-            fileList.innerHTML = '';
-            
-            if (this.files.length > 0) {
-                fileList.innerHTML = '<strong>Selected Files:</strong>';
-                for (let i = 0; i < this.files.length; i++) {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-list-item';
-                    fileItem.innerHTML = `<i class="fas fa-file"></i> ${this.files[i].name}`;
-                    fileList.appendChild(fileItem);
-                }
+    <!-- Modal for Edit Task Form -->
+    <div class="modal" id="editTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Task</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="edit_id" id="edit_id">
+                <input type="text" name="task_name" id="edit_task_name" placeholder="Task Name" required>
+                <select name="assigned_to" id="edit_assigned_to" required>
+                    <option value="">Assign to</option>
+                    <?php foreach ($employees as $employee): ?>
+                        <option value="<?= $employee['name'] ?>" data-employee-id="<?= $employee['employee_id'] ?>"><?= $employee['name'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <input type="hidden" name="employee_id" id="employee_id_hidden_edit">
+
+                <input type="date" name="date" id="edit_date" required>
+                <select name="status" id="edit_status" required>
+                    <option value="">Select Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Incomplete">Incomplete</option>
+                </select>
+                <button type="submit">Update Task</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/manage_employee_tasks.js"></script>
+<script src="../../js/script.js"></script>
+<script>
+    // Show selected files
+    document.getElementById('task_files').addEventListener('change', function() {
+        const fileList = document.getElementById('file_list');
+        fileList.innerHTML = '';
+        
+        if (this.files.length > 0) {
+            fileList.innerHTML = '<strong>Selected Files:</strong>';
+            for (let i = 0; i < this.files.length; i++) {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-list-item';
+                fileItem.innerHTML = `<i class="fas fa-file"></i> ${this.files[i].name}`;
+                fileList.appendChild(fileItem);
             }
-        });
+        }
+    });
 
-        // Update employee ID on selection
-        document.getElementById('assigned_to_create').addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const employeeId = selectedOption.getAttribute('data-employee-id');
-            document.getElementById('employee_id_hidden').value = employeeId;
-        });
+    // Update employee ID on selection
+    document.getElementById('assigned_to_create').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const employeeId = selectedOption.getAttribute('data-employee-id');
+        document.getElementById('employee_id_hidden').value = employeeId;
+    });
 
-        document.getElementById('edit_assigned_to').addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const employeeId = selectedOption.getAttribute('data-employee-id');
-            document.getElementById('employee_id_hidden_edit').value = employeeId;
-        });
-    </script>
+    document.getElementById('edit_assigned_to').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const employeeId = selectedOption.getAttribute('data-employee-id');
+        document.getElementById('employee_id_hidden_edit').value = employeeId;
+    });
+</script>
 </body>
 </html>
